@@ -1,11 +1,17 @@
 name: "covid19"
+title: "Ankur Singhal's COVID19 data project"
+description: |
+  "Explorations and projections for coronavirus"
 output_dir: "docs"
-navbar: 
-  title: "COVID-19 Projections"
+base_url: https://aksinghal86.github.io/covid19/
+collections:
+  posts:
+    feed_items_max: 50
+    share: [twitter, facebook]
+navbar:
   left:
-  - text: "Home"
-  href: index.html
-  - text: "GRM projections"
-  href: covid19-projections-using-GRM.html
-output:
-  html_document
+    - text: "Home"
+      href: index.html
+    - text: "About"
+      href: about.html
+output: distill::distill_article

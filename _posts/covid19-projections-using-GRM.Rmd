@@ -25,7 +25,7 @@ https://github.com/CSSEGISandData/COVID-19.git
 
 **Confirmed cases**
 ```{r}
-cases <- read.delim('data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv', 
+cases <- read.delim('../data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv', 
                            sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
   rename(country = Country.Region, province = Province.State, lat = Lat, lon = Long) 
 cases <- reshape2::melt(cases, id.vars = c('country', 'province', 'lat', 'lon'),
@@ -41,7 +41,7 @@ cases
 
 ```{r}
 # Confirmed deaths in the world
-deaths <- read.delim('data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv', 
+deaths <- read.delim('../data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv', 
                            sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
   rename(country = Country.Region, province = Province.State, lat = Lat, lon = Long) 
 deaths <- reshape2::melt(deaths, id.vars = c('country', 'province', 'lat', 'lon'),

@@ -19,26 +19,26 @@
  <!--/radix_placeholder_import_source-->
 
   <!--radix_placeholder_meta_tags-->
-  <title>Ankur Singhal's COVID19 data project: Projections using Generalized Richards Model</title>
+  <title>Ankur Singhal's COVID19 data project: Covid19 EDA for US States</title>
   
   
   
   
   <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
-  <meta property="og:title" content="Ankur Singhal&#39;s COVID19 data project: Projections using Generalized Richards Model"/>
+  <meta property="og:title" content="Ankur Singhal&#39;s COVID19 data project: Covid19 EDA for US States"/>
   <meta property="og:type" content="article"/>
   <meta property="og:locale" content="en_US"/>
   <meta property="og:site_name" content="Ankur Singhal&#39;s COVID19 data project"/>
   
   <!--  https://dev.twitter.com/cards/types/summary -->
   <meta property="twitter:card" content="summary"/>
-  <meta property="twitter:title" content="Ankur Singhal&#39;s COVID19 data project: Projections using Generalized Richards Model"/>
+  <meta property="twitter:title" content="Ankur Singhal&#39;s COVID19 data project: Covid19 EDA for US States"/>
   
   <!--/radix_placeholder_meta_tags-->
   <!--radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-rmarkdown-metadata">
-  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title"]}},"value":[{"type":"character","attributes":{},"value":["Projections using Generalized Richards Model"]}]}
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title"]}},"value":[{"type":"character","attributes":{},"value":["Covid19 EDA for US States"]}]}
   </script>
   <!--/radix_placeholder_rmarkdown_metadata-->
   <!--radix_placeholder_navigation_in_header-->
@@ -1269,7 +1269,7 @@
 <!--radix_placeholder_front_matter-->
 
 <script id="distill-front-matter" type="text/json">
-{"title":"Projections using Generalized Richards Model","authors":[]}
+{"title":"Covid19 EDA for US States","authors":[]}
 </script>
 
 <!--/radix_placeholder_front_matter-->
@@ -1291,224 +1291,51 @@
 <!--/radix_placeholder_site_before_body-->
 
 <div class="d-title">
-<h1>Projections using Generalized Richards Model</h1>
+<h1>Covid19 EDA for US States</h1>
 
 </div>
 
 
 <div class="d-article">
-<h2 id="load-the-necessary-libaries">Load the necessary libaries</h2>
 <div class="layout-chunk" data-layout="l-body">
 
 </div>
-<h2 id="load-the-data">Load the data</h2>
-<p>Will be using data made available by Johns Hopkins Center for Systems Science and Engineering (CSSE) <a href="https://github.com/CSSEGISandData/COVID-19.git" class="uri">https://github.com/CSSEGISandData/COVID-19.git</a></p>
-<strong>Confirmed cases</strong>
+Load the data and uncumulate
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-2-1.png" width="624" /><img src="covid19-US-states_files/figure-html5/unnamed-chunk-2-2.png" width="624" /></p>
+</div>
+<h2 id="eda">EDA</h2>
+<div class="layout-chunk" data-layout="l-body">
+
+</div>
+<p>Let’s take a look at the states hit hardest so far by COVID-19, simply because it’s too much to look at every single state. I’ll set a threshold at 500 total cases per million for defining hotspot states. Any time a new state meets this threshold we’ll know.</p>
 <div class="layout-chunk" data-layout="l-body">
 <pre><code>
-# A tibble: 21,374 x 7
-# Groups:   country, province [264]
-   country     province          lat    lon date       cum_cases cases
-   &lt;chr&gt;       &lt;chr&gt;           &lt;dbl&gt;  &lt;dbl&gt; &lt;date&gt;         &lt;int&gt; &lt;int&gt;
- 1 Afghanistan &quot;&quot;               33    65    2020-01-22         0     0
- 2 Albania     &quot;&quot;               41.2  20.2  2020-01-22         0     0
- 3 Algeria     &quot;&quot;               28.0   1.66 2020-01-22         0     0
- 4 Andorra     &quot;&quot;               42.5   1.52 2020-01-22         0     0
- 5 Angola      &quot;&quot;              -11.2  17.9  2020-01-22         0     0
- 6 Antigua an~ &quot;&quot;               17.1 -61.8  2020-01-22         0     0
- 7 Argentina   &quot;&quot;              -38.4 -63.6  2020-01-22         0     0
- 8 Armenia     &quot;&quot;               40.1  45.0  2020-01-22         0     0
- 9 Australia   &quot;Australian Ca~ -35.5 149.   2020-01-22         0     0
-10 Australia   &quot;New South Wal~ -33.9 151.   2020-01-22         0     0
-# ... with 21,364 more rows</code></pre>
+ just became new hotspots!</code></pre>
 </div>
+<p>Visualize cumulative cases and cumulative deaths for states that meet the threshold plus California.</p>
 <div class="layout-chunk" data-layout="l-body">
-<pre><code>
-# A tibble: 21,371 x 7
-# Groups:   country, province [264]
-   country     province        lat    lon date       cum_deaths deaths
-   &lt;chr&gt;       &lt;chr&gt;         &lt;dbl&gt;  &lt;dbl&gt; &lt;date&gt;          &lt;int&gt;  &lt;int&gt;
- 1 Afghanistan &quot;&quot;             33    65    2020-01-22          0      0
- 2 Albania     &quot;&quot;             41.2  20.2  2020-01-22          0      0
- 3 Algeria     &quot;&quot;             28.0   1.66 2020-01-22          0      0
- 4 Andorra     &quot;&quot;             42.5   1.52 2020-01-22          0      0
- 5 Angola      &quot;&quot;            -11.2  17.9  2020-01-22          0      0
- 6 Antigua an~ &quot;&quot;             17.1 -61.8  2020-01-22          0      0
- 7 Argentina   &quot;&quot;            -38.4 -63.6  2020-01-22          0      0
- 8 Armenia     &quot;&quot;             40.1  45.0  2020-01-22          0      0
- 9 Australia   &quot;Australian ~ -35.5 149.   2020-01-22          0      0
-10 Australia   &quot;New South W~ -33.9 151.   2020-01-22          0      0
-# ... with 21,361 more rows</code></pre>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-5-1.png" width="1344" /></p>
 </div>
-<h2 id="china">China</h2>
+<p>On log scale, you could convince yourselves that this is a log-linear relationship. Some of the states have started to reduce the exponential nature as evidenced by the flattening of the curve. Others – ones with a near relationship – have not. Cumulative death follows the cumulative cases pretty closely except with a nearly consistent two week delay. This has a useful consequence: In the US, confirmed cases are guaranteed to be an underestimate due to a lack of testing especially early on. Confirmed deaths is the most reliable metric and we can potentially detect trends in the confirmed deaths to predict the number of actual cases in the US.</p>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-4-1.png" width="1344" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-6-1.png" width="1344" /></p>
 </div>
-<p><strong>Function to fit a Generalized Richards Model to cumulative incidence data</strong></p>
-<p>Define the GRM differential equation given by: <span class="math display">\[dC/dt = r[C(t)]^p(1-C(t)/K)^\alpha\]</span>, where <em>C(t)</em> = cumulative number of cases at time <em>t</em> <em>r</em> = growth rate at the early stage <em>p</em> <span class="math inline">\(\epsilon\)</span> [0, 1] = parameter that allows the model to capture different growth profiles including the constant incidence ( <em>p</em> = 0), sub-exponential-growth (0 &lt; <em>p</em> &lt; 1) and exponential growth ( <em>p</em> = 1) <span class="math inline">\(\alpha\)</span> = measures the deviation from the symmetric s-shapes dynamics of the simple logistic curve</p>
-<p>The model recovers the original Richards model for <em>p</em> = 1 and reduces to teh generalized logistic model for <span class="math inline">\(\alpha\)</span> = and <em>p</em> = 1</p>
-<p>Source: <a href=https://arxiv.org/ftp/arxiv/papers/2003/2003.05681.pdf>Wu et al. (2020)</a></p>
+<p>On face value, Mr. Vice President’s state, i.e., Indiana, and Connecticut, Rhode Island and potentially Pennsylvania, Illinois and Georgia are not doing particularly well. Nevada is a clusterf*ck and unpredictable as usual.</p>
+<p>As of the writing of this (April 9, 2020): some states are still on a strong upward trajectory like Alabama, Delaware and DC (holy crap!); Mr. Vice President’s state (Indiana) but he should be having no problem self-isolating given that he doesn’t entertain company without the presence of his wife 😁; Pennsylvania, Rhode Island and California. Others, meanwhile, may be starting to recover from the peak of the epidemic, e.g., Colorado, Idaho, Washington, Vermont, Tennessee and maaayyybeee New York. And, in typical fashion, who the hell knows what’s going on with Nevada and Mississippi?</p>
+<p>Let’s explore a few of these states in detail and see if the trends we see are real and if we can make some projections about where they are headed. I obviously can’t talk about every single state here, but will soon create a Shiny app or something of the sort for each state and county.</p>
+<h2 id="washington">Washington</h2>
+<p>Seattle, and by proxy Washington, was one of the first hotbeds of COVID-19 in the US. It’s been on lockdown for a while and is seemingly in the decay phase now. Washington should serve as a good benchmark for our model and projections.</p>
+<h3 id="modeling-the-incidence-using-log-linear-models">Modeling the incidence using log-linear models</h3>
+<p>The log-transformed graphs shown in Figure 1 look fairly linear, which means that the incidence can theoretically be modeled using log-linear models of the form:</p>
+<p>log y = r t + b,</p>
+<p>where y is the incidence, r is the growth rate, t is the duration, and b is the intercept. You obviously need to fit two different models — one for the growth phase and the other for decay phase (if present). The package incidence from RECON is a great tool for doing this, though it’s easy to do using base R.</p>
+<p>First, we’ll create a vector of dates, one for each case in Washington, using the uncount function from the tidyr package and then create an incidence object. We will then fit two log-linear models, one each for growth and decay phases.</p>
 <div class="layout-chunk" data-layout="l-body">
-
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-7-1.png" width="624" /><img src="covid19-US-states_files/figure-html5/unnamed-chunk-7-2.png" width="624" /></p>
 </div>
-<p>We need a solver to solve the ordinary differential equation and an optimizer for the parameters <em>K, r, p, <span class="math inline">\(\alpha\)</span></em>. We’ll use the function <code>ode</code> from the <code>deSolve</code> package and the base function <code>optim</code> to achieve this.</p>
+<p>Indeed, these are good fits and can be used to extract some useful statistics. The doubling time (not the same as reproduction number <span class="math inline">\(R_{0}\)</span>!) in Washington prior to reaching the peak was 4.9 days and the anticipated halving time is 4.1 days. The halving time is an estimate based on a few data points and is likely to change, so should be taken with some skepticism. Nevertheless, it is instructive and gives us a good baseline.</p>
 <div class="layout-chunk" data-layout="l-body">
-
-</div>
-<p>Let’s write a function to make predictions based on the fit. As a default, we’ll predict cumulative cases 14 days ahead of the latest date data were collected. We’ll also use those data and uncumulate them to get incidence predictions.</p>
-<div class="layout-chunk" data-layout="l-body">
-
-</div>
-<p>Lastly, create a plotting fucntion. We’ll plot both the cumulative and incidence fits against the observed data.</p>
-<div class="layout-chunk" data-layout="l-body">
-
-</div>
-<p>Ok, we are ready to get into the fun stuff. Let’s start with Hubei since that’s the literal epicenter of the pandemic and has way more cases than any other province in China.</p>
-<h3 id="hubei">Hubei</h3>
-<h4 id="confirmed-cases">Confirmed cases</h4>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-9-1.png" width="624" /></p>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<pre><code>
-$par
-           K            r            p            a 
-6.748366e+04 1.000000e+01 5.805342e-01 3.487302e+00 
-
-$value
-[1] 209420364
-
-$counts
-function gradient 
-      90       90 
-
-$convergence
-[1] 0
-
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
-</div>
-<p>The model converged! Let’s make some predictions</p>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-11-1.png" width="960" /></p>
-</div>
-<h4 id="confirmed-deaths">Confirmed deaths</h4>
-<p>Let’s do the same for deaths</p>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-12-1.png" width="624" /></p>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<pre><code>
-$par
-           K            r            p            a 
-3.274253e+03 9.998190e+00 9.271545e-01 1.526545e-02 
-
-$value
-[1] 274344.4
-
-$counts
-function gradient 
-     141      141 
-
-$convergence
-[1] 0
-
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
-</div>
-<p>Predictions</p>
-<div class="layout-chunk" data-layout="l-body">
-
-</div>
-<p>Lastly, create a plotting fucntion. We’ll plot both the cumulative and incidence fits against the observed data.</p>
-<div class="layout-chunk" data-layout="l-body">
-
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-16-1.png" width="960" /></p>
-</div>
-<p>What’s the lag time in the peaks between confirmed cases and deaths</p>
-<div class="layout-chunk" data-layout="l-body">
-<pre><code>
-[1] &quot;2020-02-12&quot;</code></pre>
-<pre><code>
-[1] &quot;2020-02-10&quot; &quot;2020-02-11&quot;</code></pre>
-</div>
-<h3 id="hong-kong">Hong Kong</h3>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-18-1.png" width="624" /></p>
-</div>
-<p>For Hong Kong, we need to provide the starting r to help the model out. Let’s use the log-linear fit from the incidence package</p>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-19-1.png" width="624" /></p>
-<pre><code>
-&lt;list of incidence_fit objects&gt;
-
-attr(x, &#39;locations&#39;): list of vectors with the locations of each incidence_fit object
-
-&#39;before&#39;
-&#39;after&#39;
-
-$model: regression of log-incidence over time
-
-$info: list containing the following items:
-  $r (daily growth rate):
-    before      after 
- 0.1390196 -0.1171971 
-
-  $r.conf (confidence interval):
-            2.5 %     97.5 %
-before  0.1134611  0.1645782
-after  -0.1565596 -0.0778346
-
-  $doubling (doubling time in days):
-  before 
-4.985966 
-
-  $doubling.conf (confidence interval):
-          2.5 %   97.5 %
-before 4.211658 6.109119
-
-  $halving (halving time in days):
-   after 
-5.914372 
-
-  $halving.conf (confidence interval):
-        2.5 %   97.5 %
-after 4.42737 8.905386
-
-  $pred: data.frame of incidence predictions (43 rows, 6 columns)</code></pre>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<pre><code>
-$par
-          K           r           p           a 
-997.6494788   0.0964103   1.0000000   3.6750936 
-
-$value
-[1] 79548.15
-
-$counts
-function gradient 
-     173      173 
-
-$convergence
-[1] 0
-
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-21-1.png" width="960" /></p>
-</div>
-<p>Great! That works.</p>
-<h3 id="everything-but-hubei-hong-kong-inner-mongolia-beijing-shanghai-and-heilongjiang">EVerything but Hubei, Hong Kong, Inner Mongolia, Beijing, Shanghai and Heilongjiang</h3>
-<p>Some of the provinces seem to be getting a second wave of cases. Let’s remove these and see if we can use the model</p>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-22-1.png" width="624" /></p>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-23-1.png" width="624" /></p>
 <pre><code>
 &lt;list of incidence_fit objects&gt;
 
@@ -1522,211 +1349,310 @@ $model: regression of log-incidence over time
 $info: list containing the following items:
   $r (daily growth rate):
      before       after 
- 0.17294921 -0.04507202 
+ 0.14281672 -0.07825851 
 
   $r.conf (confidence interval):
-             2.5 %      97.5 %
-before  0.12254503  0.22335339
-after  -0.06240816 -0.02773588
+            2.5 %       97.5 %
+before  0.1228825  0.162750919
+after  -0.1530112 -0.003505776
 
   $doubling (doubling time in days):
   before 
-4.007808 
+4.853404 
 
   $doubling.conf (confidence interval):
-          2.5 %   97.5 %
-before 3.103365 5.656265
+          2.5 %  97.5 %
+before 4.258945 5.64073
 
   $halving (halving time in days):
    after 
-15.37866 
+8.857147 
 
   $halving.conf (confidence interval):
          2.5 %   97.5 %
-after 11.10668 24.99099
+after 4.530041 197.7157
 
-  $pred: data.frame of incidence predictions (79 rows, 6 columns)</code></pre>
+  $pred: data.frame of incidence predictions (46 rows, 6 columns)</code></pre>
+</div>
+<h3 id="estimating-the-reproduction-rate">Estimating the reproduction rate</h3>
+<p>I mentioned <span class="math inline">\(R_{0}\)</span> above, which can be estimated using log-linear models as well. We need to first provide a distribution for serial interval, SI, defined as the number of days between primary and secondary onsets of symptoms. This is typically defined as a discrete gamma distribution (discrete because data are provided in days) and can be parametrized using the epitrix and distcrete packages from RECON as well. Du et al. (2020) recently reported a mean serial interval of 3.96 days and a standard deviation of 4.75, so that’s what I’ll be using here.</p>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-9-1.png" width="624" /></p>
+</div>
+<p>Interestingly, the median growth <span class="math inline">\(R_{0}\)</span> estimated here is significantly lower than what’s been published. I suspect that this is due to a limited number of testing available in the US, thereby suppressing the actual number of cases out there. The <span class="math inline">\(R_{0}\)</span> is not really important for our purposes though. We are interested in a general trend to see if the effective reproduction number, <span class="math inline">\(R_{e}\)</span>, has gone down indicating whether the number of new infections are also trending down.</p>
+<h3 id="estimating-the-effective-reproduction-number">Estimating the effective reproduction number</h3>
+<p><code>EpiEstim</code> package from RECON allows several different ways to estimate <span class="math inline">\(R_{e}\)</span>, all of which are dependent on the SI distribution. We’ll use the Du et al. (2020) estimates again to specify the SI and then generate <span class="math inline">\(R_{e}\)</span>.</p>
+<div class="layout-chunk" data-layout="l-body">
+
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-11-1.png" width="624" /></p>
+</div>
+<p>The key thing to notice here is that the <span class="math inline">\(R_{e}\)</span> is trending down and is close to 1, which is an all important threshold indicating that one infected person infects less than one person essentially signaling the death of the epidemic. You could be snarky and say, “duh! you could have predicted that from the incidence plot,” and I would retort, “yes, but you would have found that out on April 3rd at best on the day after the peak assuming it didn’t spike back up, but the effective reproductive number has been on a downtrend since the second week of March! So, there…”</p>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-12-1.png" width="624" /></p>
+</div>
+<p>Despite the uptick at the end, the totality of the evidence suggests that Washington has the epidemic under control and if it continues to maintain its social distancing mandates, it should be out of the woods. The graph above also shows the power of public health interventions. While keeping in mind that some of the actual reported numbers may be depressed due to a lack of testing, there has been a general drop-off in Re a week or so after a public health intervention.</p>
+<p>We can do the same for other states. Let’s quickly look at Pennsylvania and Washington, DC because both reported a huge spike in numbers yesterday.</p>
+<h2 id="pennsylvnia">Pennsylvnia</h2>
+<p>Below is the incidence plot for Pennsylvania. Note that I only chose to fit it to the first peak of April 3rd because I think the testing was backlogged and the actual confirmed cases are lagging. This is part based on data (confirmed death cases) and reporting and part qualititative. Confirmed deaths is probably a better proxy as pointed out by Tomas Pueyo and used by IHME in their projections (I’ll be incorporating those into the model).</p>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-13-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <pre><code>
-$par
-           K            r            p            a 
-1.188104e+04 1.000000e+01 5.584026e-01 1.100157e+00 
+&lt;incidence_fit object&gt;
 
-$value
-[1] 2137877
+$model: regression of log-incidence over time
 
-$counts
-function gradient 
-      84       84 
+$info: list containing the following items:
+  $r (daily growth rate):
+[1] 0.257797
 
-$convergence
-[1] 0
+  $r.conf (confidence interval):
+         2.5 %    97.5 %
+[1,] 0.2407541 0.2748399
 
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
+  $doubling (doubling time in days):
+[1] 2.688733
+
+  $doubling.conf (confidence interval):
+        2.5 %   97.5 %
+[1,] 2.522004 2.879067
+
+  $pred: data.frame of incidence predictions (30 rows, 5 columns)</code></pre>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-25-1.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-15-1.png" width="624" /></p>
 </div>
-<h2 id="south-korea">South Korea</h2>
+<p>Despite the latest uptick in incident cases, the effective reproductive number has been on a solid downward trend. Pennsylvania still has a lot of work to do though before it’s below 1.</p>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-26-1.png" width="624" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-16-1.png" width="624" /></p>
 </div>
+<h2 id="washington-dc">Washington, DC</h2>
+<p>Below are the same two charts for Washington, DC, which are fairly inconclusive, pointing to the limitation of using effective reproduction number to make assessments, especially given the amount of uncertainties in the US with lack of testing.</p>
 <div class="layout-chunk" data-layout="l-body">
-<pre><code>
-$par
-           K            r            p            a 
-9771.7699891    0.2299594    1.0000000    0.7778226 
-
-$value
-[1] 14232482
-
-$counts
-function gradient 
-     100      100 
-
-$convergence
-[1] 0
-
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-28-1.png" width="960" /></p>
-</div>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-29-1.png" width="624" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-17-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <pre><code>
-$par
-           K            r            p            a 
-242.08766398   0.08409304   1.00000000   1.25928062 
+&lt;incidence_fit object&gt;
 
-$value
-[1] 1934.225
+$model: regression of log-incidence over time
 
-$counts
-function gradient 
-     133      133 
+$info: list containing the following items:
+  $r (daily growth rate):
+[1] 0.13648
 
-$convergence
-[1] 0
+  $r.conf (confidence interval):
+         2.5 %    97.5 %
+[1,] 0.1133625 0.1595976
 
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
+  $doubling (doubling time in days):
+[1] 5.078745
+
+  $doubling.conf (confidence interval):
+        2.5 %   97.5 %
+[1,] 4.343093 6.114433
+
+  $pred: data.frame of incidence predictions (30 rows, 5 columns)</code></pre>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-31-1.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-19-1.png" width="624" /></p>
 </div>
-<p>What’s the lag time in the peaks between confirmed cases and deaths</p>
 <div class="layout-chunk" data-layout="l-body">
-<pre><code>
-[1] &quot;2020-03-04&quot;</code></pre>
-<pre><code>
-[1] &quot;2020-03-25&quot;</code></pre>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-20-1.png" width="624" /></p>
 </div>
-<h2 id="italy">Italy</h2>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-33-1.png" width="624" /></p>
-</div>
+<p>Estimate the force of infection using the <code>earlyR</code> package</p>
 <div class="layout-chunk" data-layout="l-body">
 <pre><code>
-$par
-           K            r            p            a 
-1.686799e+05 7.155707e-01 7.868981e-01 1.999994e+01 
+/// Early estimate of reproduction number (R) //
+ // class: earlyR, list
 
-$value
-[1] 3950457336
+ // Maximum-Likelihood estimate of R ($R_ml):
+[1] 1.373373
 
-$counts
-function gradient 
-     133      133 
 
-$convergence
-[1] 0
+ // $lambda:
+  0.2087998 0.1578114 0.748937 0.5700994 1.697466 1.298742...
 
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
+ // $dates:
+[1] &quot;2020-03-08&quot; &quot;2020-03-09&quot; &quot;2020-03-10&quot; &quot;2020-03-11&quot; &quot;2020-03-12&quot;
+[6] &quot;2020-03-13&quot;
+...
+
+ // $si (serial interval):
+A discrete distribution
+  name: gamma
+  parameters:
+    shape: 0.695029362880886
+    scale: 5.69760101010101</code></pre>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-21-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-35-1.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-22-1.png" width="624" /></p>
 </div>
+<p>The effective reproduction number has been trending down and the lambda has also gone down since yesterday, but <span class="math inline">\(R_{0}\)</span> has been volatile and there was the latest uptick, so this one is unclear and hard to make a judgment on. DC had better clamp down.</p>
+<p>Some others that are not in the post, but analyzed below</p>
+<h2 id="virginia">Virginia</h2>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-36-1.png" width="624" /></p>
-</div>
-<p>The GRM model struggles to fit the death data. We can use the Generalized Logistic Regression model using the <code>nlsLM</code> function from the <code>minpack.lm</code> package, which is: <span class="math display">\[C(t) = p/(1+exp(- \alpha\ (t- \beta\ ))\]</span></p>
-<p>Reference: IHME (<a href="https://ihmeuw-msca.github.io/CurveFit/methods/" class="uri">https://ihmeuw-msca.github.io/CurveFit/methods/</a>)</p>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-37-1.png" width="960" /></p>
-</div>
-<h2 id="spain">Spain</h2>
-<div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-38-1.png" width="624" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-23-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <pre><code>
-$par
-           K            r            p            a 
-1.537190e+05 2.770593e-01 9.157889e-01 1.490584e+01 
+&lt;incidence_fit object&gt;
 
-$value
-[1] 1697847339
+$model: regression of log-incidence over time
 
-$counts
-function gradient 
-     169      169 
+$info: list containing the following items:
+  $r (daily growth rate):
+[1] 0.1740696
 
-$convergence
-[1] 0
+  $r.conf (confidence interval):
+         2.5 %   97.5 %
+[1,] 0.1475651 0.200574
 
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
+  $doubling (doubling time in days):
+[1] 3.982013
+
+  $doubling.conf (confidence interval):
+        2.5 %  97.5 %
+[1,] 3.455817 4.69723
+
+  $pred: data.frame of incidence predictions (36 rows, 5 columns)</code></pre>
+</div>
+Estimate the reproduction number
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-25-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-40-1.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-26-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-41-1.png" width="624" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-27-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-42-1.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-28-1.png" width="624" /></p>
 </div>
-<h2 id="germany">Germany</h2>
+<h2 id="new-york">New York</h2>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-43-1.png" width="624" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-29-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <pre><code>
-$par
-           K            r            p            a 
-1.194792e+05 2.888860e-01 9.033531e-01 2.000000e+01 
+&lt;list of incidence_fit objects&gt;
 
-$value
-[1] 1093830927
+attr(x, &#39;locations&#39;): list of vectors with the locations of each incidence_fit object
 
-$counts
-function gradient 
-     128      128 
+&#39;before&#39;
+&#39;after&#39;
 
-$convergence
-[1] 0
+$model: regression of log-incidence over time
 
-$message
-[1] &quot;CONVERGENCE: REL_REDUCTION_OF_F &lt;= FACTR*EPSMCH&quot;</code></pre>
+$info: list containing the following items:
+  $r (daily growth rate):
+    before      after 
+0.27498006 0.01143205 
+
+  $r.conf (confidence interval):
+             2.5 %     97.5 %
+before  0.24454015 0.30541996
+after  -0.04837654 0.07124065
+
+  $doubling (doubling time in days):
+   before     after 
+ 2.520718 60.631915 
+
+  $doubling.conf (confidence interval):
+          2.5 %     97.5 %
+before 2.269489   2.834492
+after  9.729659 -14.328167
+
+  $pred: data.frame of incidence predictions (42 rows, 6 columns)</code></pre>
+</div>
+<h2 id="estimate-the-reproduction-number">Estimate the reproduction number</h2>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-31-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-45-1.png" width="960" /><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-45-2.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-32-1.png" width="624" /></p>
 </div>
-<p>In the test run above, the NLS LM using the <strong>Levenberg-Marquardt</strong> is better and faster.</p>
+<h2 id="california">California</h2>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-46-1.png" width="624" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-33-1.png" width="624" /></p>
+<pre><code>
+&lt;incidence_fit object&gt;
+
+$model: regression of log-incidence over time
+
+$info: list containing the following items:
+  $r (daily growth rate):
+[1] 0.1496652
+
+  $r.conf (confidence interval):
+         2.5 %    97.5 %
+[1,] 0.1339362 0.1653942
+
+  $doubling (doubling time in days):
+[1] 4.631318
+
+  $doubling.conf (confidence interval):
+       2.5 %   97.5 %
+[1,] 4.19088 5.175205
+
+  $pred: data.frame of incidence predictions (47 rows, 5 columns)</code></pre>
 </div>
 <div class="layout-chunk" data-layout="l-body">
-<p><img src="covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-47-1.png" width="960" /></p>
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-34-1.png" width="624" /></p>
 </div>
-<p>Final thoughts: <code>nlslm</code> is way faster than using the optim function for GRM and may even be more accurate. Moving forward that’s what I’ll use.</p>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-35-1.png" width="624" /></p>
+</div>
+<h2 id="massachusetts">Massachusetts</h2>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-36-1.png" width="624" /></p>
+<pre><code>
+&lt;incidence_fit object&gt;
+
+$model: regression of log-incidence over time
+
+$info: list containing the following items:
+  $r (daily growth rate):
+[1] 0.2010989
+
+  $r.conf (confidence interval):
+         2.5 %    97.5 %
+[1,] 0.1798666 0.2223312
+
+  $doubling (doubling time in days):
+[1] 3.446798
+
+  $doubling.conf (confidence interval):
+        2.5 %   97.5 %
+[1,] 3.117633 3.853674
+
+  $pred: data.frame of incidence predictions (37 rows, 5 columns)</code></pre>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-37-1.png" width="624" /></p>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-38-1.png" width="624" /></p>
+</div>
+<h2 id="florida">Florida</h2>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-39-1.png" width="624" /></p>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-40-1.png" width="624" /></p>
+</div>
+<h2 id="louisiana">Louisiana</h2>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-41-1.png" width="624" /></p>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<p><img src="covid19-US-states_files/figure-html5/unnamed-chunk-42-1.png" width="624" /></p>
+</div>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>

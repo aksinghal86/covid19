@@ -1,0 +1,11 @@
+---
+title: "About this blog"
+description: |
+  About me
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+Source code located at: https://github.com/aksinghal86/covid19
