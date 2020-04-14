@@ -9,7 +9,7 @@ collections:
     feed_items_max: 50
     share: [twitter, facebook]
 navbar:
-  left:
+  right:
     - text: "Home"
       href: index.html
     - text: "About"
