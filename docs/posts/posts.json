@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "path": "posts/estimating-R-in-US/",
+    "title": "Estimating reproductive number R in US for COVID19",
+    "description": "Using RECON packages to estimate effective reproductive number (R) and making some semi-qualitative projections about the trajectory of the epidemic",
+    "author": [
+      {
+        "name": "Ankur Singhal",
+        "url": {}
+      }
+    ],
+    "date": "2020-04-10",
+    "categories": [
+      "R",
+      "COVID-19"
+    ],
+    "preview": "posts/estimating-R-in-US/estimating-R-in-US_files/figure-html5/unnamed-chunk-1-1.png",
+    "last_modified": "2020-04-14T09:29:42-07:00",
+    "preview_width": 1248,
+    "preview_height": 768
+  }
+]

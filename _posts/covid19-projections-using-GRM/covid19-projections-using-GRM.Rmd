@@ -1,6 +1,24 @@
 ---
-title: "Projections using Generalized Richards Model"
-output: html_document
+title: "COVID19 projections using Generalized Richards Model"
+description: "Making COVID19 forecasts on confirmed cases and deaths around the world using Generalized Richards Model (GRM)"
+categories:
+  - R
+  - "COVID-19"
+author:
+  - name: Ankur Singhal 
+    affiliation: Empirical Solutions Consulting, LLC
+creative_commons: CC BY-SA
+date: "2020-04-14"
+base_url: https://aksinghal86.github.com/io/covid19
+slug: aksinghal862020covid19R
+twitter:
+  creator: "@skepticalAnkur"
+output:
+  distill::distill_article:
+    toc: true
+    toc_depth: 2
+    self_contained: false
+repository_url: https://github.com/aksinghal86/covid19/blob/master/_posts/covid19-projections-using-GRM/covid19-projections-using-GRM.Rmd
 ---
 
 ## Load the necessary libaries
@@ -25,7 +43,7 @@ https://github.com/CSSEGISandData/COVID-19.git
 
 **Confirmed cases**
 ```{r}
-cases <- read.delim('../data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv', 
+cases <- read.delim('assets/time_series_covid19_confirmed_global.csv', 
                            sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
   rename(country = Country.Region, province = Province.State, lat = Lat, lon = Long) 
 cases <- reshape2::melt(cases, id.vars = c('country', 'province', 'lat', 'lon'),
@@ -41,7 +59,7 @@ cases
 
 ```{r}
 # Confirmed deaths in the world
-deaths <- read.delim('../data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv', 
+deaths <- read.delim('assets/time_series_covid19_deaths_global.csv', 
                            sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
   rename(country = Country.Region, province = Province.State, lat = Lat, lon = Long) 
 deaths <- reshape2::melt(deaths, id.vars = c('country', 'province', 'lat', 'lon'),
