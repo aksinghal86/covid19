@@ -1,5 +1,25 @@
 [
   {
+    "path": "posts/covid19-projections-using-GRM/",
+    "title": "COVID19 projections using Generalized Richards Model",
+    "description": "Making COVID19 forecasts on confirmed cases and deaths around the world using Generalized Richards Model (GRM)",
+    "author": [
+      {
+        "name": "Ankur Singhal",
+        "url": {}
+      }
+    ],
+    "date": "2020-04-14",
+    "categories": [
+      "R",
+      "COVID-19"
+    ],
+    "preview": "posts/covid19-projections-using-GRM/covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-25-1.png",
+    "last_modified": "2020-04-14T09:54:10-07:00",
+    "preview_width": 2688,
+    "preview_height": 2688
+  },
+  {
     "path": "posts/estimating-R-in-US/",
     "title": "Estimating reproductive number R in US for COVID19",
     "description": "Using RECON packages to estimate effective reproductive number (R) and making some semi-qualitative projections about the trajectory of the epidemic",
@@ -14,7 +34,7 @@
       "R",
       "COVID-19"
     ],
-    "preview": "posts/estimating-R-in-US/estimating-R-in-US_files/figure-html5/unnamed-chunk-1-1.png",
+    "preview": "posts/estimating-R-in-US/estimating-R-in-US_files/figure-html5/unnamed-chunk-19-1.png",
     "last_modified": "2020-04-14T09:29:42-07:00",
     "preview_width": 1248,
     "preview_height": 768
