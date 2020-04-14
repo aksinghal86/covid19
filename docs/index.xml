@@ -7,6 +7,15 @@
     <description>"Explorations and projections for coronavirus"
 </description>
     <generator>Distill</generator>
-    <lastBuildDate>Tue, 14 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 10 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <item>
+      <title>Estimating reproductive number R in US for COVID19</title>
+      <dc:creator>Ankur Singhal</dc:creator>
+      <link>https://aksinghal86.github.io/covid19/posts/estimating-R-in-US</link>
+      <description>Using RECON packages to estimate effective reproductive number (R) and making some semi-qualitative projections about the trajectory of the epidemic</description>
+      <guid>https://aksinghal86.github.io/covid19/posts/estimating-R-in-US</guid>
+      <pubDate>Fri, 10 Apr 2020 00:00:00 +0000</pubDate>
+      <media:content url="https://aksinghal86.github.io/covid19/posts/estimating-R-in-US/estimating-R-in-US_files/figure-html5/unnamed-chunk-1-1.png" medium="image" type="image/png" width="1248" height="768"/>
+    </item>
   </channel>
 </rss>
