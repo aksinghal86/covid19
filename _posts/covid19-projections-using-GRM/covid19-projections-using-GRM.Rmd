@@ -21,8 +21,8 @@ output:
 repository_url: https://github.com/aksinghal86/covid19/blob/master/_posts/covid19-projections-using-GRM/covid19-projections-using-GRM.Rmd
 ---
 
-## Load the necessary libaries
 ```{r}
+# Load the necessary libraries
 library(tidyr)
 library(dplyr)
 library(ggplot2)

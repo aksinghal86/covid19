@@ -7,7 +7,16 @@
     <description>"Explorations and projections for coronavirus"
 </description>
     <generator>Distill</generator>
-    <lastBuildDate>Fri, 10 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 14 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <item>
+      <title>COVID19 projections using Generalized Richards Model</title>
+      <dc:creator>Ankur Singhal</dc:creator>
+      <link>https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM</link>
+      <description>Making COVID19 forecasts on confirmed cases and deaths around the world using Generalized Richards Model (GRM)</description>
+      <guid>https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM</guid>
+      <pubDate>Tue, 14 Apr 2020 00:00:00 +0000</pubDate>
+      <media:content url="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-4-1.png" medium="image" type="image/png" width="2688" height="2688"/>
+    </item>
     <item>
       <title>Estimating reproductive number R in US for COVID19</title>
       <dc:creator>Ankur Singhal</dc:creator>
