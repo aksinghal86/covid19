@@ -1,5 +1,10 @@
 ---
 title: "Covid19 EDA for US States"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 output: html_document
 ---
 
@@ -22,7 +27,7 @@ library(earlyR)
 Load the data and uncumulate
 ```{r}
 # Load the state data
-state_cases <- read.delim('../data/covid-19-data/us-states.csv', sep=",", header = TRUE, stringsAsFactors = FALSE) %>% 
+state_cases <- read.delim('data/covid-19-data/us-states.csv', sep=",", header = TRUE, stringsAsFactors = FALSE) %>% 
   mutate(date = ymd(date), cum_cases = cases, cum_deaths = deaths) %>% 
   group_by(state) %>% 
   mutate(cases = c(cum_cases[1], diff(cum_cases)), 
@@ -67,7 +72,7 @@ Let's take a look at the states hit hardest so far by COVID-19, simply because i
 
 ```{r}
 # Load the population data by state (from US Census)
-state_pop <- read.delim("../data/us-population-by-state.csv", sep = ",", header=TRUE, stringsAsFactors = FALSE)
+state_pop <- read.delim("data/us-population-by-state.csv", sep = ",", header=TRUE, stringsAsFactors = FALSE)
 state_cases %>% 
   filter(date == today()-1) %>% 
   left_join(state_pop, by = "state") %>% 
@@ -80,11 +85,11 @@ state_cases %>%
 hotspot_states <- c("California", hotspot_states)
 
 # Compare to old hotspot states saved as an RDS object
-old_hotspot_states <- readRDS("../data/hotspot_states.rds")
+old_hotspot_states <- readRDS("data/hotspot_states.rds")
 cat(hotspot_states[!(hotspot_states %in% old_hotspot_states)], "just became new hotspots!")
 
 # Let's save this for future use so we can compare whether new states have passed this threshold
-saveRDS(hotspot_states, "../data/hotspot_states.rds")
+saveRDS(hotspot_states, "data/hotspot_states.rds")
 rm(old_hotspot_states)
 ```
 
