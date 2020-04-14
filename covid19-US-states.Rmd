@@ -1,0 +1,654 @@
+---
+title: "Covid19 EDA for US States"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+output: html_document
+---
+
+```{r, echo=FALSE, message=FALSE}
+# General
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(magrittr)
+# RECON epi 
+library(incidence)
+library(EpiEstim)
+library(distcrete)
+library(epitrix)
+library(projections)
+library(earlyR)
+```
+
+Load the data and uncumulate
+```{r}
+# Load the state data
+state_cases <- read.delim('data/covid-19-data/us-states.csv', sep=",", header = TRUE, stringsAsFactors = FALSE) %>% 
+  mutate(date = ymd(date), cum_cases = cases, cum_deaths = deaths) %>% 
+  group_by(state) %>% 
+  mutate(cases = c(cum_cases[1], diff(cum_cases)), 
+         deaths = c(cum_deaths[1], diff(cum_deaths)))
+  
+
+# Let's visualize for Washington
+state_cases %>% 
+  filter(state == "Washington") %>% 
+  ggplot(aes(x = date)) + 
+  geom_line(aes(y = cases)) + 
+  geom_line(aes(y = deaths), lty = "dashed") + 
+  labs(x = "", y = "Daily Incident cases" , title = "Daily Incident Cases in Washington", 
+       subtitle = "(solid line = confirmed cases, dashed line = confirmed deaths)") + 
+  theme_minimal()
+
+state_cases %>% 
+  filter(state == "Washington") %>% 
+  ggplot(aes(x = date)) + 
+  geom_line(aes(y = cum_cases), color = "red") + 
+  geom_line(aes(y = cum_deaths), color = "red", lty = "dashed") + 
+  labs(x = "", y = "Cumulative cases" , title = "Cumulative Cases in Washington", 
+       subtitle = "(solid line = confirmed cases, dashed line = confirmed deaths)") + 
+  theme_minimal()
+```
+
+## EDA
+
+```{r, echo=FALSE}
+# Set plotting settings
+my_theme = theme_minimal() + 
+  theme(legend.position = 'none', 
+        axis.text.x = element_text(color = "darkgrey"),
+        axis.text.y = element_text(color = "darkgrey"),
+        axis.title = element_text(size = 14), 
+        strip.text = element_text(size = 14), 
+        plot.title = element_text(size = 18),
+        plot.subtitle = element_text(size = 14))
+```
+
+Let's take a look at the states hit hardest so far by COVID-19, simply because it's too much to look at every single state. I'll set a threshold at 500 total cases per million for defining hotspot states. Any time a new state meets this threshold we'll know. 
+
+```{r}
+# Load the population data by state (from US Census)
+state_pop <- read.delim("data/us-population-by-state.csv", sep = ",", header=TRUE, stringsAsFactors = FALSE)
+state_cases %>% 
+  filter(date == today()-1) %>% 
+  left_join(state_pop, by = "state") %>% 
+  mutate(fraction = cum_cases/population) %>% 
+  # set the threshold at 500 cases per million
+  filter(fraction > 0.0005) %>% 
+  pull(state) -> hotspot_states
+
+# Add California even though the cumulative cases < threshold
+hotspot_states <- c("California", hotspot_states)
+
+# Compare to old hotspot states saved as an RDS object
+old_hotspot_states <- readRDS("data/hotspot_states.rds")
+cat(hotspot_states[!(hotspot_states %in% old_hotspot_states)], "just became new hotspots!")
+
+# Let's save this for future use so we can compare whether new states have passed this threshold
+saveRDS(hotspot_states, "data/hotspot_states.rds")
+rm(old_hotspot_states)
+```
+
+Visualize cumulative cases and cumulative deaths for states that meet the threshold plus California. 
+
+```{r, fig.width = 14, fig.height = 14}
+
+state_cases %>% filter(state %in% hotspot_states) %>% 
+  ggplot(aes(x=date, color=state)) + 
+  geom_line(aes(y=log(cum_cases)), size = 1) +
+  geom_line(aes(y=log(cum_deaths)), lty="dashed", size = 1) + 
+  labs(x = "", y = "N (log scale)", title = "Cumulative cases for hotspot states (plus California) on log scale", 
+       subtitle = "(solid line = confirmed cases, dashed line = confirmed deaths)") +
+  facet_wrap(~state) + 
+  my_theme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.5, size = 14), 
+        axis.text.y = element_text(size = 14))
+```
+
+On log scale, you could convince yourselves that this is a log-linear relationship. Some of the states have started to reduce the exponential nature as evidenced by the flattening of the curve. Others -- ones with a near relationship -- have not. Cumulative death follows the cumulative cases pretty closely except with a nearly consistent two week delay. This has a useful consequence: In the US, confirmed cases are guaranteed to be an underestimate due to a lack of testing especially early on. Confirmed deaths is the most reliable metric and we can potentially detect trends in the confirmed deaths to predict the number of actual cases in the US. 
+
+
+```{r,  fig.width=14, fig.height=14}
+state_cases %>% filter(date > ymd("2020-02-28"), state %in% hotspot_states) %>% 
+  ggplot(aes(x=date, color=state)) + 
+  geom_line(aes(y=cases), size = 1) +
+  geom_line(aes(y=deaths), lty="dashed", size = 1) + 
+  labs(x = "", y = "N", 
+       title = "Daily Cases for hotspot states plus California", 
+       subtitle = "(solid line = confirmed cases, dashed line = confirmed deaths") +
+  facet_wrap(~state, scales = "free_y") + 
+  my_theme
+  
+```
+
+On face value, Mr. Vice President's state, i.e., Indiana, and Connecticut, Rhode Island and potentially Pennsylvania, Illinois and Georgia are not doing particularly well. Nevada is a clusterf*ck and unpredictable as usual.
+
+As of the writing of this (April 9, 2020): some states are still on a strong upward trajectory like Alabama, Delaware and DC (holy crap!); Mr. Vice President’s state (Indiana) but he should be having no problem self-isolating given that he doesn’t entertain company without the presence of his wife 😁; Pennsylvania, Rhode Island and California. Others, meanwhile, may be starting to recover from the peak of the epidemic, e.g., Colorado, Idaho, Washington, Vermont, Tennessee and maaayyybeee New York. And, in typical fashion, who the hell knows what’s going on with Nevada and Mississippi?
+
+Let’s explore a few of these states in detail and see if the trends we see are real and if we can make some projections about where they are headed. I obviously can’t talk about every single state here, but will soon create a Shiny app or something of the sort for each state and county.
+
+## Washington
+
+Seattle, and by proxy Washington, was one of the first hotbeds of COVID-19 in the US. It’s been on lockdown for a while and is seemingly in the decay phase now. Washington should serve as a good benchmark for our model and projections.
+
+### Modeling the incidence using log-linear models
+
+The log-transformed graphs shown in Figure 1 look fairly linear, which means that the incidence can theoretically be modeled using log-linear models of the form:
+
+log y = r t + b,
+
+where y is the incidence, r is the growth rate, t is the duration, and b is the intercept. You obviously need to fit two different models — one for the growth phase and the other for decay phase (if present). The package incidence from RECON is a great tool for doing this, though it’s easy to do using base R.
+
+First, we’ll create a vector of dates, one for each case in Washington, using the uncount function from the tidyr package and then create an incidence object. We will then fit two log-linear models, one each for growth and decay phases.
+
+```{r, warning=FALSE}
+# Format data for use by the incidence package
+wa_inc_cases <- state_cases %>% 
+  filter(state == "Washington") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.wa <- incidence(wa_inc_cases$date)
+
+plot(i.wa, color = 'turquoise', border = 'white') + 
+  theme_minimal() + 
+  labs(title = "Incidence plot for Washington") + 
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 10, color = 'darkgrey'), 
+        plot.title = element_text(size = 18))
+
+i.wa.peak <- incidence::find_peak(i.wa)
+# Setting the start date helps with a better fit -- almost forced to do this due to a lack of robust data in the uS
+i.wa.fit <- incidence::fit(subset(i.wa, from = ymd('2020-02-07')), split = i.wa.peak)
+plot(i.wa, color="turquoise", border="white") %>%
+  add_incidence_fit(i.wa.fit) + 
+  theme_minimal() + 
+  labs(title = "Observed and modeled incidence in Washington") + 
+  theme(axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 10, color = 'darkgrey'), 
+        plot.title = element_text(size = 18))
+```
+
+Indeed, these are good fits and can be used to extract some useful statistics. The doubling time (not the same as reproduction number $R_{0}$!) in Washington prior to reaching the peak was 4.9 days and the anticipated halving time is 4.1 days. The halving time is an estimate based on a few data points and is likely to change, so should be taken with some skepticism. Nevertheless, it is instructive and gives us a good baseline.
+
+```{r}
+# Look at estimated doubling and halving times
+i.wa.fit
+```
+
+### Estimating the reproduction rate
+
+I mentioned $R_{0}$ above, which can be estimated using log-linear models as well. We need to first provide a distribution for serial interval, SI, defined as the number of days between primary and secondary onsets of symptoms. This is typically defined as a discrete gamma distribution (discrete because data are provided in days) and can be parametrized using the epitrix and distcrete packages from RECON as well. Du et al. (2020) recently reported a mean serial interval of 3.96 days and a standard deviation of 4.75, so that’s what I’ll be using here.
+
+```{r}
+# Set params from Du et al. (2020)
+mu <- 3.96
+sigma <- 4.75
+param <- epitrix::gamma_mucv2shapescale(mu, sigma/mu)
+
+w <- distcrete("gamma", interval = 1, shape = param$shape, scale = param$scale, w = 0)
+growth_R0 <- epitrix::lm2R0_sample(i.wa.fit$before$model, w)
+hist(growth_R0, col = "turquoise", border = "white", main = "Distribution of growth R0")
+```
+
+Interestingly, the median growth $R_{0}$ estimated here is significantly lower than what’s been published. I suspect that this is due to a limited number of testing available in the US, thereby suppressing the actual number of cases out there. The $R_{0}$ is not really important for our purposes though. We are interested in a general trend to see if the effective reproduction number, $R_{e}$, has gone down indicating whether the number of new infections are also trending down.
+
+### Estimating the effective reproduction number
+`EpiEstim` package from RECON allows several different ways to estimate $R_{e}$, all of which are dependent on the SI distribution. We’ll use the Du et al. (2020) estimates again to specify the SI and then generate $R_{e}$.
+
+```{r, echo = FALSE}
+plot_Ri <- function(estimate_R_obj) {
+  p_I <- plot(estimate_R_obj, "incid", add_imported_cases = TRUE)
+  p_SI <- plot(estimate_R_obj, "SI")
+  p_Ri <- plot(estimate_R_obj, "R")
+  return(gridExtra::grid.arrange(p_I, p_SI, p_Ri, ncol = 1))
+}
+```
+
+```{r, message=FALSE, warning=FALSE}
+wa_cases <- state_cases %>% 
+  filter(state == "Washington") %>% 
+  ungroup() %>%
+  mutate(imported = ifelse(date < ymd("2020-03-07"), cases, 0),
+         local = ifelse(date < ymd("2020-03-07"), 0, cases)) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+wa_res <- EpiEstim::estimate_R(
+  wa_cases[wa_cases$dates > ymd('2020-02-21'),], method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(wa_res)
+```
+The key thing to notice here is that the $R_{e}$ is trending down and is close to 1, which is an all important threshold indicating that one infected person infects less than one person essentially signaling the death of the epidemic. You could be snarky and say, “duh! you could have predicted that from the incidence plot,” and I would retort, “yes, but you would have found that out on April 3rd at best on the day after the peak assuming it didn’t spike back up, but the effective reproductive number has been on a downtrend since the second week of March! So, there…”
+
+```{r}
+plot(wa_res, "R") +
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-13'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-25'), lty = 'dashed', color = 'darkblue', size = 1) + 
+  geom_vline(xintercept = ymd('2020-03-23'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for Washington", 
+       subtitle = "(green dashed line = Educational services closed, blue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+Despite the uptick at the end, the totality of the evidence suggests that Washington has the epidemic under control and if it continues to maintain its social distancing mandates, it should be out of the woods. The graph above also shows the power of public health interventions. While keeping in mind that some of the actual reported numbers may be depressed due to a lack of testing, there has been a general drop-off in Re a week or so after a public health intervention.
+
+We can do the same for other states. Let’s quickly look at Pennsylvania and Washington, DC because both reported a huge spike in numbers yesterday.
+
+## Pennsylvnia
+
+Below is the incidence plot for Pennsylvania. Note that I only chose to fit it to the first peak of April 3rd because I think the testing was backlogged and the actual confirmed cases are lagging. This is part based on data (confirmed death cases) and reporting and part qualititative. Confirmed deaths is probably a better proxy as pointed out by Tomas Pueyo and used by IHME in their projections (I’ll be incorporating those into the model).
+
+```{r, warning=FALSE}
+pa_inc_cases <- state_cases %>% 
+  filter(state == "Pennsylvania") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.pa <- incidence(pa_inc_cases$date)
+i.pa.peak <- incidence::find_peak(i.pa)
+i.pa.early.fit <- incidence::fit(subset(i.pa, to = ymd('2020-04-04')))
+plot(i.pa, color="turquoise", border="white") %>%
+  add_incidence_fit(i.pa.early.fit) + 
+  labs(title = "Incidence plot for Pennsylvania") +
+  theme_minimal() 
+```
+
+
+```{r}
+i.pa.early.fit
+```
+
+
+```{r, warning=FALSE}
+pa_cases <- state_cases %>% 
+  filter(state == "Pennsylvania") %>% 
+  ungroup() %>%
+  mutate(imported = 0,
+         local =  cases) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+pa_res <- EpiEstim::estimate_R(
+  pa_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(pa_res) 
+```
+Despite the latest uptick in incident cases, the effective reproductive number has been on a solid downward trend. Pennsylvania still has a lot of work to do though before it’s below 1.
+
+
+```{r}
+plot(pa_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-17'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-20'), lty = 'dashed', color = 'darkblue', size = 1) + 
+  geom_vline(xintercept = ymd('2020-04-01'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for Pennsylvania", 
+       subtitle = "(green dashed line = Educational services closed, blue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+
+## Washington, DC
+
+Below are the same two charts for Washington, DC, which are fairly inconclusive, pointing to the limitation of using effective reproduction number to make assessments, especially given the amount of uncertainties in the US with lack of testing.
+
+```{r, warning=FALSE}
+dc_inc_cases <- state_cases %>% 
+  filter(state == "District of Columbia") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.dc <- incidence(dc_inc_cases$date)
+i.dc.peak <- incidence::find_peak(i.dc)
+i.dc.early.fit <- incidence::fit(subset(i.dc))
+plot(i.dc, color="turquoise", border="white") %>%
+  add_incidence_fit(i.dc.early.fit) + 
+  labs(title = "Incidence plot for Washington, DC") +
+  theme_minimal() 
+
+```
+
+```{r}
+i.dc.early.fit
+```
+
+
+```{r, warning=FALSE}
+dc_cases <- state_cases %>% 
+  filter(state == "District of Columbia") %>% 
+  ungroup() %>%
+  mutate(imported = 0,
+         local =  cases) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+dc_res <- EpiEstim::estimate_R(
+  dc_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(dc_res) 
+```
+
+
+```{r}
+plot(dc_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-16'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-25'), lty = 'dashed', color = 'darkblue', size = 1) + 
+  geom_vline(xintercept = ymd('2020-03-30'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for Washington, DC", 
+       subtitle = "(green dashed line = Educational services closed, blue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+Estimate the force of infection using the `earlyR` package
+
+```{r, warning=FALSE}
+dc_simple_R <- get_R(i.dc, si_mean = mu, si_sd = sigma, max_R = 7)
+dc_simple_R
+plot(dc_simple_R)
+```
+```{r}
+plot(dc_simple_R, 'lambdas')
+abline(v = today(), col = 'darkblue', lty = 'dashed', lwd = 2)
+```
+
+
+The effective reproduction number has been trending down and the lambda has also gone down since yesterday, but $R_{0}$ has been volatile and there was the latest uptick, so this one is unclear and hard to make a judgment on. DC had better clamp down.
+
+Some others that are not in the post, but analyzed below
+
+## Virginia
+
+```{r, warning=FALSE}
+# Format data for use by the incidence package
+va_inc_cases <- state_cases %>% 
+  filter(state == "Virginia") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.va <- incidence(va_inc_cases$date)
+i.va.peak <- incidence::find_peak(i.va)
+i.va.fit <- incidence::fit(subset(i.va))
+plot(i.va, color="turquoise", border="white") %>%
+  add_incidence_fit(i.va.fit) + 
+  theme_minimal()
+
+```
+
+```{r}
+# Look at estimated doubling time
+i.va.fit
+```
+
+Estimate the reproduction number
+```{r}
+w <- distcrete("gamma", interval = 1, shape = param$shape, scale = param$scale, w = 0)
+growth_R0 <- epitrix::lm2R0_sample(i.va.fit$model, w)
+hist(growth_R0, col = "turquoise", border = "white", main = "Distribution of growth R0")
+```
+
+```{r, warning=FALSE, message=FALSE}
+va_cases <- state_cases %>% 
+  filter(state == "Virginia") %>% 
+  ungroup() %>%
+  mutate(imported = ifelse(date < ymd("2020-03-18"), cases, 0),
+         local = ifelse(date < ymd("2020-03-18"), 0, cases)) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+va_res <- EpiEstim::estimate_R(
+  va_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(va_res) 
+```
+```{r}
+plot(va_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-16'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-30'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for Virginia", 
+       subtitle = "(green dashed line = Educational services closed, orange dashed line = Stay at home order)") +
+  theme_minimal() + 
+  theme(legend.position = 'none')
+```
+
+
+```{r, warning=FALSE}
+va_simple_R <- get_R(i.va, si_mean = mu, si_sd = sigma)
+plot(va_simple_R, 'lambdas')
+abline(v = today(), col = 'darkblue', lty = 'dashed', lwd = 2)
+```
+
+
+## New York
+
+```{r, warning=FALSE}
+# Format data for use by the incidence package
+ny_inc_cases <- state_cases %>% 
+  filter(state == "New York") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.ny <- incidence(ny_inc_cases$date)
+i.ny.peak <- incidence::find_peak(i.ny)
+i.ny.fit <- incidence::fit(i.ny, split = i.ny.peak)
+plot(i.ny, color="turquoise", border="white") %>%
+  add_incidence_fit(i.ny.fit) + 
+  theme_minimal()
+
+```
+
+```{r}
+
+# Look at estimated doubling time
+i.ny.fit
+```
+
+
+## Estimate the reproduction number
+
+```{r, warning=FALSE, message=FALSE}
+ny_cases <- state_cases %>% 
+  filter(state == "New York") %>% 
+  ungroup() %>%
+  mutate(imported = ifelse(date < ymd("2020-03-18"), cases, 0),
+         local = ifelse(date < ymd("2020-03-18"), 0, cases)) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+ny_res <- EpiEstim::estimate_R(
+  ny_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(ny_res) 
+```
+```{r}
+plot(ny_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-18'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-20'), lty = 'dashed', color = 'darkblue', size = 1) + 
+  geom_vline(xintercept = ymd('2020-03-22'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for NY", 
+       subtitle = "(green dashed line = Educational services closed, blue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
+  theme_minimal() + 
+  theme(legend.position = 'none')
+```
+
+## California
+
+```{r, warning=FALSE}
+ca_inc_cases <- state_cases %>% 
+  filter(state == "California") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.ca <- incidence(ca_inc_cases$date)
+i.ca.peak <- incidence::find_peak(i.ca)
+i.ca.early.fit <- incidence::fit(subset(i.ca, from = ymd('2020-02-01'), to = i.ca.peak))
+plot(i.ca, color="turquoise", border="white") %>%
+  add_incidence_fit(i.ca.early.fit) + 
+  theme_minimal() 
+
+i.ca.early.fit
+```
+
+```{r, warning=FALSE}
+ca_cases <- state_cases %>% 
+  filter(state == "California") %>% 
+  ungroup() %>%
+  mutate(imported = ifelse(date < ymd("2020-03-10"), cases, 0),
+         local = ifelse(date < ymd("2020-03-10"), 0, cases)) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+ca_res <- EpiEstim::estimate_R(
+  ca_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(ca_res) 
+```
+
+
+```{r}
+plot(ca_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-19'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  labs(x = "", title = "Estimated R for CA", 
+       subtitle = "(green dashed line = Educational services, non-essential services closed and stay at home order)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+
+## Massachusetts
+
+```{r, warning=FALSE}
+ma_inc_cases <- state_cases %>% 
+  filter(state == "Massachusetts") %>% 
+  ungroup() %>%
+  select(date, cases) %>% 
+  uncount(cases)
+
+# Create an incidence object and find the peak
+i.ma <- incidence(ma_inc_cases$date)
+i.ma.peak <- incidence::find_peak(i.ma)
+i.ma.early.fit <- incidence::fit(subset(i.ma, from = ymd('2020-02-14'), to = i.ma.peak))
+plot(i.ma, color="turquoise", border="white") %>%
+  add_incidence_fit(i.ma.early.fit) + 
+  theme_minimal() 
+
+i.ma.early.fit
+```
+
+```{r, warning=FALSE}
+ma_cases <- state_cases %>% 
+  filter(state == "Massachusetts", date>ymd('2020-03-07')) %>% 
+  ungroup() %>%
+  mutate(imported = 0, local = cases) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+ma_res <- EpiEstim::estimate_R(
+  ma_cases, method = "parametric_si", 
+  config = make_config(list(
+    mean_si = mu, std_si = sigma)))
+plot_Ri(ma_res)
+```
+
+```{r}
+plot(ma_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-17'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-24'), lty = 'dashed', color = 'darkblue', size = 1) + 
+  labs(x = "", title = "Estimated R for Massachusetts", 
+       subtitle = "(green dashed line = Educational services closed, blue dashed line = Non-essential services closed, \nStay at home order not implemented)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+## Florida
+
+```{r, warning=FALSE}
+fl_cases <- state_cases %>% 
+  filter(state == "Florida") %>% 
+  ungroup() %>%
+  mutate(imported = ifelse(date < ymd("2020-03-17"), cases, 0),
+         local = ifelse(date < ymd("2020-03-17"), 0, cases)) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+fl_res <- EpiEstim::estimate_R(
+  fl_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(fl_res) 
+```
+
+```{r}
+plot(fl_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-17'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-04-03'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for Florida", 
+       subtitle = "(green dashed line = Educational services closed, orange dashed line = Stay at home order)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+## Louisiana
+
+```{r, warning=FALSE}
+la_cases <- state_cases %>% 
+  filter(state == "Louisiana") %>% 
+  ungroup() %>%
+  mutate(imported = ifelse(date < ymd("2020-03-17"), cases, 0),
+         local = ifelse(date < ymd("2020-03-17"), 0, cases)) %>%
+  select(date, local, imported) %>%
+  rename(dates=date)
+
+la_res <- EpiEstim::estimate_R(
+  la_cases, method = "parametric_si", config = make_config(
+    list(mean_si = mu, std_si = sigma)))
+plot_Ri(la_res) 
+```
+
+```{r}
+plot(fl_res, "R") +
+  #scale_y_continuous(trans = "log2") + 
+  geom_hline(yintercept = 1, lty = "solid", color = "red") + 
+  geom_vline(xintercept = ymd('2020-03-16'), lty = 'dashed', color = 'darkgreen', size = 1) +
+  geom_vline(xintercept = ymd('2020-03-22'), lty = 'dashed', color = 'darkblue', size = 1) + 
+  geom_vline(xintercept = ymd('2020-03-23'), lty = 'dashed', color = 'darkorange', size = 1) +
+  labs(x = "", title = "Estimated R for Florida", 
+       subtitle = "(green dashed line = Educational services closed, blue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+
+
