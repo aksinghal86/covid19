@@ -1,0 +1,11 @@
+name: "covid19"
+output_dir: "docs"
+navbar: 
+  title: "COVID-19 Projections"
+  left:
+  - text: "Home"
+  href: index.html
+  - text: "GRM projections"
+  href: covid19-projections-using-GRM.html
+output:
+  html_document

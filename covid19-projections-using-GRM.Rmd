@@ -1,0 +1,515 @@
+---
+title: "Projections using Generalized Richards Model"
+output: html_document
+---
+
+## Load the necessary libaries
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(reshape2)
+library(gridExtra)
+library(deSolve)
+library(minpack.lm)
+library(incidence)
+```
+
+
+## Load the data
+
+Will be using data made available by Johns Hopkins Center for Systems Science and Engineering (CSSE)
+https://github.com/CSSEGISandData/COVID-19.git
+
+
+**Confirmed cases**
+```{r}
+cases <- read.delim('data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv', 
+                           sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
+  rename(country = Country.Region, province = Province.State, lat = Lat, lon = Long) 
+cases <- reshape2::melt(cases, id.vars = c('country', 'province', 'lat', 'lon'),
+                             variable.name = 'date', value.name = 'cum_cases') %>%
+  mutate(date = as.Date(date, "X%m.%d.%y")) %>% 
+  group_by(country, province) %>% 
+  mutate(cases = c(cum_cases[1], diff(cum_cases))) %>%
+  filter(cases >= 0)
+cases$country[cases$country == "Taiwan*"] <- "Taiwan"
+cases
+```
+
+
+```{r}
+# Confirmed deaths in the world
+deaths <- read.delim('data/covid-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv', 
+                           sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
+  rename(country = Country.Region, province = Province.State, lat = Lat, lon = Long) 
+deaths <- reshape2::melt(deaths, id.vars = c('country', 'province', 'lat', 'lon'),
+                             variable.name = 'date', value.name = 'cum_deaths') %>%
+  mutate(date = as.Date(date, "X%m.%d.%y")) %>% 
+  group_by(country, province) %>% 
+  mutate(deaths = c(cum_deaths[1], diff(cum_deaths))) %>%
+  filter(deaths >= 0)
+deaths$country[deaths$country == "Taiwan*"] <- "Taiwan"
+deaths
+```
+
+## China
+
+```{r, fig.height=14, fig.width=14}
+cases %>% filter(country == "China") %>% 
+  ggplot(., aes(x = date, y = cases, color = province)) + 
+  geom_line() + 
+  facet_wrap(~ province, scales = "free_y") + 
+  labs(x = "") + 
+  theme_minimal() + 
+  theme(legend.position = 'none', 
+        axis.text.x = element_text(angle = 90))
+```
+
+**Function to fit a Generalized Richards Model to cumulative incidence data**
+
+Define the GRM differential equation given by:
+\[dC/dt = r[C(t)]^p(1-C(t)/K)^\alpha\], where
+  _C(t)_ = cumulative number of cases at time _t_
+  _r_ = growth rate at the early stage
+  _p_ \(\epsilon\) [0, 1] = parameter that allows the model to capture different growth profiles including the constant incidence ( _p_ = 0), sub-exponential-growth (0 < _p_ < 1) and exponential growth ( _p_ = 1)
+  \(\alpha\) = measures the deviation from the symmetric s-shapes dynamics of the simple logistic curve
+
+The model recovers the original Richards model for _p_ = 1 and reduces to teh generalized logistic model for \(\alpha\) = and _p_ = 1
+
+Source: <a href=https://arxiv.org/ftp/arxiv/papers/2003/2003.05681.pdf>Wu et al. (2020)</a>
+
+```{r}
+# Generalized Richards model (GRM)
+GRM <- function(time, state, parameters) {
+  par <- as.list(c(state, parameters))
+  with(par, {
+    dC <- r * (C^p) * (1 - (C/K)^a)
+    return(list(c(dC)))
+  })
+}
+```
+
+We need a solver to solve the ordinary differential equation and an optimizer for the parameters _K, r, p, \(\alpha\)_. We'll use the function `ode` from the `deSolve` package and the base function `optim` to achieve this. 
+
+```{r}
+optimizer <- function(cum_cases, K_start = 10000, r_start = 1, p_start = 0.5, a_start = 1.5) {
+  # Solver for the GRM 
+  
+  RSS <- function(parameters) {
+    names(parameters) <- c('K', 'r', 'p', 'a')
+    times <- 1:length(cum_cases)
+    out <- ode(y = init, times = times, func = GRM, parms = parameters)
+    fit <- out[, 2]
+    sum((cum_cases - fit)^2)
+  }
+  
+  # Initialize the parameters
+  init <- c(C = 1)
+  # K_start <- if (is.null(K_start)) median(cum_cases)
+  pars <- c(K = K_start, r = r_start, p = p_start, a = a_start)
+  
+  
+  # Optimizer of the parameters using RSS 
+  Opt <- optim(pars, RSS, method = "L-BFGS-B", 
+               lower = c(0, 0, 0, 0), 
+               upper = c(10000000, 10, 1, 20))
+  return(Opt)
+  }
+```
+
+Let's write a function to make predictions based on the fit. As a default, we'll predict cumulative cases 14 days ahead of the latest date data were collected. We'll also use those data and uncumulate them to get incidence predictions.
+
+```{r}
+# Prediction function, default is 14 days forward of the last date of observed data
+make_preds <- function(df, fit, t_fwd = 14) {
+  t <- 1:(as.integer(today() - df$date[1]) + t_fwd)
+  # Make predictions based on cumulative incidence
+  preds <- data.frame(ode(y = c(C=1), times = t, func = GRM, parms = fit$par))
+  preds <- preds %>% 
+    mutate(date = df$date[1] + days(t-1),
+           C = round(C, 0), 
+           # uncumulate to get incidence
+           I = c(C[1], diff(C))) %>% 
+    left_join(df %>% ungroup() %>% select(date, cum_cases, cases)) 
+  return(preds)
+}
+```
+
+Lastly, create a plotting fucntion. We'll plot both the cumulative and incidence fits against the observed data. 
+
+```{r}
+plot_grm_fits <- function(df, name) {
+  
+  # Cumulative plot of observed vs fitted
+  cum_plot <- ggplot(df, aes(x=date)) +
+    geom_line(aes(y = C), color = "turquoise", size = 2) +
+    geom_point(aes(y = cum_cases), color = "magenta", shape = 1, size = 3) +
+    geom_line(aes(y = cum_cases), color = "gray10", linetype = "dashed") + 
+    labs(x = "", y = 'Cumulative Incidence', 
+         title = paste('Cumulative Cases fitted vs observed in', name),
+         subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+    theme_minimal()
+  
+  # Incidence plot of observed vs fitted
+  inc_plot <- ggplot(df, aes(x=date)) +
+    geom_line(aes(y = I), color = "turquoise", size = 2) +
+    geom_point(aes(y = cases), color = "magenta", shape = 1, size = 3) +
+    geom_line(aes(y = cases), color = "gray10", linetype = "dashed") +
+    labs(y = 'Daily Incidence', title = paste('Incident Cases fitted vs observed in', name),
+         subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+    theme_minimal()
+  
+  gridExtra::grid.arrange(cum_plot, inc_plot, ncol = 2)
+}
+```
+
+
+Ok, we are ready to get into the fun stuff. Let's start with Hubei since that's the literal epicenter of the pandemic and has way more cases than any other province in China. 
+
+### Hubei
+
+#### Confirmed cases
+
+```{r}
+hubei_cases <- cases %>% filter(province == 'Hubei')
+plot(hubei_cases$date, hubei_cases$cum_cases, 'l')
+```
+
+
+
+```{r}
+hubei_grm_fit <- optimizer(hubei_cases$cum_cases)
+hubei_grm_fit
+```
+The model converged! Let's make some predictions
+
+```{r, warning=FALSE, message=FALSE, fig.width=10}
+hubei_preds <- make_preds(hubei_cases, hubei_grm_fit)
+plot_grm_fits(hubei_preds, "Hubei")
+```
+
+#### Confirmed deaths
+
+Let's do the same for deaths
+
+```{r}
+hubei_deaths <- deaths %>% filter(province == 'Hubei')
+plot(hubei_deaths$date, hubei_deaths$cum_deaths, 'l')
+```
+```{r}
+hubei_deaths_grm_fit <- optimizer(hubei_deaths$cum_deaths, K_start = 5000)
+hubei_deaths_grm_fit
+```
+Predictions
+
+```{r}
+# Prediction function, default is 14 days forward of the last date of observed data
+make_deaths_preds <- function(df, fit, t_fwd = 14) {
+  t <- 1:(as.integer(today() - df$date[1]) + t_fwd)
+  # Make predictions based on cumulative incidence
+  preds <- data.frame(ode(y = c(C=1), times = t, func = GRM, parms = fit$par))
+  preds <- preds %>% 
+    mutate(date = df$date[1] + days(t-1),
+           C = round(C, 0), 
+           # uncumulate to get incidence
+           I = c(C[1], diff(C))) %>% 
+    left_join(df %>% ungroup %>% select(date, cum_deaths, deaths)) 
+  return(preds)
+}
+```
+
+Lastly, create a plotting fucntion. We'll plot both the cumulative and incidence fits against the observed data. 
+
+```{r}
+plot_grm_deaths_fits <- function(df, name) {
+  
+  # Cumulative plot of observed vs fitted
+  cum_plot <- ggplot(df, aes(x=date)) +
+    geom_line(aes(y = C), color = "red", size = 2) +
+    geom_point(aes(y = cum_deaths), color = "orange", shape = 1, size = 3) +
+    geom_line(aes(y = cum_deaths), color = "gray10", linetype = "dashed") + 
+    labs(x = "", y = 'Cumulative Deaths', 
+         title = paste('Cumulative Deaths fitted vs observed in', name),
+         subtitle = '(red = fitted incidence, orange = observed incidence)') +
+    theme_minimal()
+  
+  # Incidence plot of observed vs fitted
+  inc_plot <- ggplot(df, aes(x=date)) +
+    geom_line(aes(y = I), color = "red", size = 2) +
+    geom_point(aes(y = deaths), color = "orange", shape = 1, size = 3) +
+    geom_line(aes(y = deaths), color = "gray10", linetype = "dashed") +
+    labs(y = 'Daily Deaths', title = paste('Incident Deaths fitted vs observed in', name),
+         subtitle = '(red = fitted incidence, orange = observed incidence)') +
+    theme_minimal()
+  
+  gridExtra::grid.arrange(cum_plot, inc_plot, ncol = 2)
+}
+```
+
+
+```{r, warning=FALSE, message=FALSE, fig.width=10}
+hubei_deaths_preds <- make_deaths_preds(hubei_deaths, hubei_deaths_grm_fit)
+plot_grm_deaths_fits(hubei_deaths_preds, "Hubei")
+```
+
+What's the lag time in the peaks between confirmed cases and deaths
+
+```{r}
+hubei_preds %>% filter(I == max(I)) %>% pull(date); 
+hubei_deaths_preds %>% filter(I == max(I)) %>% pull(date)
+```
+
+
+### Hong Kong
+```{r}
+hongkong <- cases %>% filter(province == 'Hong Kong')
+plot(hongkong$date, hongkong$cum_cases, 'l')
+```
+For Hong Kong, we need to provide the starting r to help the model out. Let's use the log-linear fit from the incidence package
+
+```{r}
+i.hk <- incidence((hongkong %>% select(date, cases) %>% uncount(cases))$date)
+i.hk.peak <- find_peak(i.hk)
+i.hk.fit <- incidence::fit(subset(i.hk, from = ymd('2020-02-28')), split = i.hk.peak)
+plot(i.hk) %>% add_incidence_fit(i.hk.fit)
+i.hk.fit
+```
+
+```{r}
+hongkong_grm_fit <- optimizer(hongkong$cum_cases, K_start = 200, r_start = 0.14)
+hongkong_grm_fit
+```
+
+```{r, , fig.width=10, warning=FALSE, message=FALSE}
+hongkong_preds <- make_preds(hongkong, hongkong_grm_fit)
+plot_grm_fits(hongkong_preds, "Hong Kong")
+```
+Great! That works. 
+
+### EVerything but Hubei, Hong Kong, Inner Mongolia, Beijing, Shanghai and Heilongjiang
+Some of the provinces seem to be getting a second wave of cases. Let's remove these and see if we can use the model 
+
+```{r}
+to_rm <- c("Hubei", "Hong Kong", "Beijing", "Shanghai", "Inner Mongolia", "Heilongjiang")
+select_china <- cases %>% filter(country == "China", !(province %in% to_rm)) %>% 
+  group_by(date) %>% summarise(cum_cases = sum(cum_cases), cases = sum(cases))
+
+plot(select_china$date, select_china$cum_cases)
+```
+
+```{r}
+i.select_china <- incidence((select_china %>% select(date, cases) %>% uncount(cases))$date)
+i.select_china.peak <- find_peak(i.select_china)
+i.select_china.fit <- incidence::fit(i.select_china, split = i.select_china.peak)
+plot(i.select_china) %>% add_incidence_fit(i.select_china.fit)
+i.select_china.fit
+```
+
+```{r}
+select_china_grm_fit <- optimizer(select_china$cum_cases, K_start = 5000)
+select_china_grm_fit
+```
+
+```{r, , fig.width=10, warning=FALSE, message=FALSE}
+select_china_preds <- make_preds(select_china, select_china_grm_fit)
+plot_grm_fits(select_china_preds, paste("China minus\n", paste(to_rm[1:4], collapse = ", ")))
+```
+
+## South Korea
+
+```{r}
+south_korea <- cases %>% filter(country == "Korea, South") 
+plot(south_korea$cum_cases)
+```
+
+```{r}
+south_korea_grm_fit <- optimizer(south_korea$cum_cases)
+south_korea_grm_fit
+```
+
+```{r, , fig.width=10, warning=FALSE, message=FALSE}
+south_korea_preds <- make_preds(south_korea, south_korea_grm_fit)
+plot_grm_fits(south_korea_preds, "South Korea")
+```
+
+```{r}
+south_korea_deaths <- deaths %>% filter(country == "Korea, South")
+plot(south_korea_deaths$cum_deaths)
+```
+
+
+```{r}
+south_korea_deaths_grm_fit <- optimizer(south_korea_deaths$cum_deaths, K_start = 10, r_start = 0.10)
+south_korea_deaths_grm_fit
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=10}
+south_korea_deaths_preds <- make_deaths_preds(south_korea_deaths, south_korea_deaths_grm_fit)
+plot_grm_deaths_fits(south_korea_deaths_preds, "South Korea")
+```
+
+What's the lag time in the peaks between confirmed cases and deaths
+
+```{r}
+ii <- south_korea_preds %>% filter(I == max(I)) %>% pull(date)
+dd <- south_korea_deaths_preds %>% filter(I == max(I)) %>% pull(date)
+ii[ceiling(length(ii)/2)]; dd[ceiling(length(dd)/2)]
+```
+
+
+## Italy
+
+```{r}
+italy <- cases %>% filter(country == "Italy") 
+plot(italy$cum_cases)
+```
+
+```{r}
+italy_grm_fit <- optimizer(italy$cum_cases)
+italy_grm_fit
+```
+
+```{r, , fig.width=10, warning=FALSE, message=FALSE}
+italy_preds <- make_preds(italy, italy_grm_fit)
+plot_grm_fits(italy_preds, "Italy")
+```
+
+```{r}
+italy_deaths <- deaths %>% filter(country == "Italy")
+plot(italy_deaths$cum_deaths)
+```
+
+The GRM model struggles to fit the death data. We can use the Generalized Logistic Regression model using the `nlsLM` function from the `minpack.lm` package, which is: 
+\[C(t) = p/(1+exp(- \alpha\ (t- \beta\ ))\]
+
+Reference: IHME (https://ihmeuw-msca.github.io/CurveFit/methods/)
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+italy_deaths <- italy_deaths %>% mutate(time = 1:nrow(italy_deaths))
+
+# Fit using the generalized logistic model
+italy_deaths_fit <-nlsLM(cum_deaths ~ p/(1 + exp(-a * (time-B))), italy_deaths,
+                         start = list(a = 0.2, p = 0.5, B = 10), lower = c(0, 0, 0))
+
+# Make predictions
+t <- 1:(as.integer(today() - italy_deaths$date[1]) + 14)
+italy_deaths_preds <- data.frame(t = t, C = predict(italy_deaths_fit, list(time=t)))
+italy_deaths_preds <- italy_deaths_preds %>%
+  mutate(date = italy_deaths$date[1] + days(t-1),
+         C = round(C, 0),
+         I = c(C[1], diff(C))) %>%
+  left_join(italy_deaths %>% ungroup() %>% select(date, cum_deaths, deaths))
+
+# Plot
+plot_grm_deaths_fits(italy_deaths_preds, 'Italy')
+
+```
+
+
+
+## Spain
+
+```{r}
+spain <- cases %>% filter(country == "Spain") 
+plot(spain$cum_cases)
+```
+
+```{r}
+spain_grm_fit <- optimizer(spain$cum_cases)
+spain_grm_fit
+```
+
+```{r, fig.width=10, warning=FALSE, message=FALSE}
+spain_preds <- make_preds(spain, spain_grm_fit)
+plot_grm_fits(spain_preds, "Spain")
+```
+
+```{r}
+spain_deaths <- deaths %>% filter(country == "Spain")
+plot(spain_deaths$cum_deaths)
+```
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+spain_deaths <- spain_deaths %>% mutate(time = 1:nrow(spain_deaths))
+
+# Fit using the generalized logistic model
+spain_deaths_fit <-nlsLM(cum_deaths ~ p/(1 + exp(-a * (time-B))), spain_deaths,
+                         start = list(a = 0.2, p = 0.5, B = 10), lower = c(0, 0, 0))
+
+# Make predictions
+t <- 1:(as.integer(today() - spain_deaths$date[1]) + 14)
+spain_deaths_preds <- data.frame(t = t, C = predict(spain_deaths_fit, list(time=t)))
+spain_deaths_preds <- italy_deaths_preds %>%
+  mutate(date = italy_deaths$date[1] + days(t-1),
+         C = round(C, 0),
+         I = c(C[1], diff(C))) %>%
+  left_join(spain_deaths %>% ungroup() %>% select(date, cum_deaths, deaths))
+
+# Plot
+plot_grm_deaths_fits(spain_deaths_preds, 'Spain')
+
+```
+
+## Germany
+
+```{r}
+germany <- cases %>% filter(country == "Germany") 
+plot(germany$cum_cases)
+```
+
+```{r}
+germany_grm_fit <- optimizer(germany$cum_cases)
+germany_grm_fit
+```
+
+```{r, fig.width=10, warning=FALSE, message=FALSE}
+germany_preds <- make_preds(germany, germany_grm_fit)
+
+
+# Fit using the generalized logistic model
+germany_glm_fit <-nlsLM(cum_cases ~ p/(1 + exp(-a * (time-B))), germany_preds,
+                         start = list(a = 0.2, p = 0.5, B = 10), lower = c(0, 0, 0))
+
+# Make predictions
+germany_preds$glm <- predict(germany_glm_fit, list(time=germany_preds$time))
+
+# Plot
+plot_grm_fits(germany_preds, 'Germany') 
+ggplot(germany_preds, aes(x = date)) + geom_point(aes(y = cum_cases)) + geom_line(aes(y = glm)) + theme_minimal()
+
+```
+
+In the test run above, the NLS LM using the **Levenberg-Marquardt** is better and faster. 
+
+```{r}
+germany_deaths <- deaths %>% filter(country == "Germany")
+plot(germany_deaths$cum_deaths)
+```
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+germany_deaths <- germany_deaths %>% mutate(time = 1:nrow(germany_deaths))
+
+# Fit using the generalized logistic model
+germany_deaths_fit <-nlsLM(cum_deaths ~ p/(1 + exp(-a * (time-B))), germany_deaths,
+                         start = list(a = 0.2, p = 0.5, B = 10), lower = c(0, 0, 0))
+
+# Make predictions
+t <- 1:(as.integer(today() - germany_deaths$date[1]) + 14)
+germany_deaths_preds <- data.frame(t = t, C = predict(germany_deaths_fit, list(time=t)))
+germany_deaths_preds <- germany_deaths_preds %>%
+  mutate(date = germany_deaths$date[1] + days(t-1),
+         C = round(C, 0),
+         I = c(C[1], diff(C))) %>%
+  left_join(germany_deaths %>% ungroup() %>% select(date, cum_deaths, deaths))
+
+# Plot
+plot_grm_deaths_fits(germany_deaths_preds, 'Germany')
+
+```
+
+Final thoughts: `nlslm` is way faster than using the optim function for GRM and may even be more accurate. Moving forward that's what I'll use. 
+
+
+
