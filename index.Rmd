@@ -1,5 +1,5 @@
 ---
 title: "Home"
-author: "Ankur Singhal"
-date: "4/10/2020"
+site: distill::distill_website
+listing: posts
 ---
