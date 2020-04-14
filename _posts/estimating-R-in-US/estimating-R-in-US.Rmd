@@ -1,8 +1,32 @@
 ---
-title: "Covid19 EDA for US States"
+title: "Estimating reproductive number R in US for COVID19"
+description: "Using RECON packages to estimate effective reproductive number (R) and making some semi-qualitative projections about the trajectory of the epidemic"
+categories:
+  - R
+  - "COVID-19"
+author:
+  - name: Ankur Singhal 
+    affiliation: Empirical Solutions Consulting, LLC
+creative_commons: CC BY-SA
+date: "2020-04-10"
+base_url: https://aksinghal86.github.com/io/covid19
+slug: aksinghal862020covid19R
+twitter:
+  creator: "@skepticalAnkur"
+output:
+  distill::distill_article:
+    toc: true
+    toc_depth: 2
+    self_contained: false
 ---
 
-```{r, echo=FALSE, message=FALSE}
+```{r setup, include=FALSE}
+version <- "1.8"
+version_date <- lubridate::ymd("2020-04-10")
+knitr::opts_chunk$set(echo = FALSE, cache=TRUE,
+                      tidy.opts=list(width.cutoff=60),
+                      tidy=TRUE)
+
 # General
 library(ggplot2)
 library(tidyr)
