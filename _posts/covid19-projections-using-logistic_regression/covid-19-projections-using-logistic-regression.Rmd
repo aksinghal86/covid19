@@ -18,7 +18,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, cache = TRUE, 
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, 
                       tidy.opts = list(width.cutoff = 60), 
                       tidy = TRUE)
 library(lubridate)
@@ -87,7 +87,7 @@ head(all_data, 20)
 
 Let's define our model using the equation above and use the `nlsLM` function to fit the regression model
 
-```{r logistic_regression_fn, eval=TRUE}
+```{r logistic_regression_fn, eval=TRUE, echo=TRUE}
 lg_reg <- function(t, C, p_start=10, a_start=0.2, B_start=1, trace=FALSE){
   results <- list()
   
@@ -102,7 +102,7 @@ lg_reg <- function(t, C, p_start=10, a_start=0.2, B_start=1, trace=FALSE){
 
 Now a function to make predictions on a given data set using the fit
 
-```{r pred_fucntion, eval=TRUE}
+```{r pred_fucntion, eval=TRUE, echo=TRUE}
 make_preds <- function(t, fit) {
   preds <- predict(fit, list(t = t))
   return(preds)
@@ -155,7 +155,7 @@ Let's make some predictions for US using the model defined above
 
 ## Confirmed cases
 
-```{r us_projections, layout='l-body-outset', eval=TRUE, tidy=TRUE, warning=FALSE, message=FALSE}
+```{r us_projections, layout='l-body-outset', eval=TRUE, tidy=TRUE, warning=FALSE, message=FALSE, echo=TRUE}
 # Filter the database
 us <- all_data %>% filter(state == "All states", county=="All counties") %>% 
   mutate(Day = 1:length(date))
