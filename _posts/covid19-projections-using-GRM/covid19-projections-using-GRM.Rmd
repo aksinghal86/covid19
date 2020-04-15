@@ -10,7 +10,7 @@ author:
 creative_commons: CC BY-SA
 date: "2020-04-14"
 base_url: https://aksinghal86.github.com/io/covid19
-slug: aksinghal862020covid19R
+slug: aksinghal862020covid19GRM
 twitter:
   creator: "@skepticalAnkur"
 output:
@@ -35,7 +35,7 @@ library(incidence)
 ```
 
 
-## Load the data
+# The data
 
 Will be using data made available by Johns Hopkins Center for Systems Science and Engineering (CSSE)
 https://github.com/CSSEGISandData/COVID-19.git
@@ -72,7 +72,7 @@ deaths$country[deaths$country == "Taiwan*"] <- "Taiwan"
 deaths
 ```
 
-## China
+# China
 
 ```{r, fig.height=14, fig.width=14}
 cases %>% filter(country == "China") %>% 
@@ -186,7 +186,7 @@ plot_grm_fits <- function(df, name) {
 
 Ok, we are ready to get into the fun stuff. Let's start with Hubei since that's the literal epicenter of the pandemic and has way more cases than any other province in China. 
 
-### Hubei
+## Hubei
 
 #### Confirmed cases
 
@@ -280,7 +280,7 @@ hubei_deaths_preds %>% filter(I == max(I)) %>% pull(date)
 ```
 
 
-### Hong Kong
+## Hong Kong
 ```{r}
 hongkong <- cases %>% filter(province == 'Hong Kong')
 plot(hongkong$date, hongkong$cum_cases, 'l')
@@ -306,7 +306,7 @@ plot_grm_fits(hongkong_preds, "Hong Kong")
 ```
 Great! That works. 
 
-### EVerything but Hubei, Hong Kong, Inner Mongolia, Beijing, Shanghai and Heilongjiang
+## EVerything but Hubei, Hong Kong, Inner Mongolia, Beijing, Shanghai and Heilongjiang
 Some of the provinces seem to be getting a second wave of cases. Let's remove these and see if we can use the model 
 
 ```{r}
@@ -335,7 +335,7 @@ select_china_preds <- make_preds(select_china, select_china_grm_fit)
 plot_grm_fits(select_china_preds, paste("China minus\n", paste(to_rm[1:4], collapse = ", ")))
 ```
 
-## South Korea
+# South Korea
 
 ```{r}
 south_korea <- cases %>% filter(country == "Korea, South") 
@@ -377,7 +377,7 @@ ii[ceiling(length(ii)/2)]; dd[ceiling(length(dd)/2)]
 ```
 
 
-## Italy
+# Italy
 
 ```{r}
 italy <- cases %>% filter(country == "Italy") 
@@ -427,7 +427,7 @@ plot_grm_deaths_fits(italy_deaths_preds, 'Italy')
 
 
 
-## Spain
+# Spain
 
 ```{r}
 spain <- cases %>% filter(country == "Spain") 
@@ -449,7 +449,7 @@ spain_deaths <- deaths %>% filter(country == "Spain")
 plot(spain_deaths$cum_deaths)
 ```
 
-```{r, message=FALSE, warning=FALSE, fig.width=10}
+```{r, message=FALSE, warning=FALSE, fig.width=10, preview=TRUE}
 spain_deaths <- spain_deaths %>% mutate(time = 1:nrow(spain_deaths))
 
 # Fit using the generalized logistic model
@@ -470,7 +470,7 @@ plot_grm_deaths_fits(spain_deaths_preds, 'Spain')
 
 ```
 
-## Germany
+# Germany
 
 ```{r}
 germany <- cases %>% filter(country == "Germany") 

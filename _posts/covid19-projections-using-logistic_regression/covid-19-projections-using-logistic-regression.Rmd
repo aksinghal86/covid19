@@ -1,0 +1,329 @@
+---
+title: "COVID19 Projections using Simple Logistic Regression"
+description: |
+  COVID19 projections by state and by county for the anticipated number of confirmed cases and deaths in the US using simple logistic regression. 
+author:
+  - name: Ankur Singhal 
+    url: https://aksinghal86.github.io/covid19
+    affiliation: Empirical Solutions Consulting, LLC
+date: "2020-04-15"
+slug: aksinghal862020covid19LR
+twitter:
+  creator: "@skepticalAnkur"
+output:
+  distill::distill_article:
+    toc: true
+    toc_depth: 1
+    self_contained: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, 
+                      tidy.opts = list(width.cutoff = 60), 
+                      tidy = TRUE)
+library(lubridate)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(minpack.lm)
+library(incidence)
+```
+
+
+# Background 
+
+In the [previous post] (https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/), I used Generalized Richard's Model, also known as Generalized Logistic Regression, to make some predictions for various countries around the world, but by the end of the article, I realized that fits were just as good, if not better, and much much faster by using just a simple logistic regression model. Part of the problem is that GRM is too sensitive to starting conditions, which ironically does not _generalize_ well to all the countries and provinces/states. In fact, the highly respected and influential projections made by [IHME] (https://covid19.healthdata.org) also uses simple logistic regression, with a bunch of other statistical measures added in to control for variability for each parameter. 
+
+The motivation behind this article is to make some predictions at the US state and county level using simple logistic regression, which is of the form: 
+
+\[C(t) = p/(1+exp(- \alpha\ (t- \beta\ ))\], where: 
+  
+ - \(p\) is the asymptotic value of infections (the peak of the curve); 
+ - \(\alpha\) is the growth rate prior to the peak of the infections; and
+ - \(\beta\) is where rate of change is maximal
+
+Reference: [IHME] (https://ihmeuw-msca.github.io/CurveFit/methods/)  
+
+We'll make our fits using the `nlsLM` function from the `minpack.lm` package, which uses the _Levenberg-Marquardt_ method for fitting.
+
+# The Data
+
+For now, I'll start with US by state and by counties (where there are enough data points) for purposes of incorporating this into the [shiny app] (https://aksinghal86.shinyapp.io/covid19/)
+
+Let's use the data provided by NY Times Github because that's what's being used in the app
+
+```{r us_data, layout='l-body-outset', tidy=TRUE, warning=FALSE, message=FALSE, echo=FALSE}
+# Get the data by state directly from New York Times Github
+state_data <- read.delim('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv',
+                          sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
+    mutate(date = ymd(date), cum_cases = cases, cum_deaths = deaths) %>%
+    group_by(state) %>% 
+    mutate(cases = c(cum_cases[1], diff(cum_cases)), 
+           deaths = c(cum_deaths[1], diff(cum_deaths)), 
+           county = "All counties")
+
+# Combine the data to get metrics for the entire US
+all_us <- state_data %>% 
+    group_by(date) %>% 
+    summarize(cases = sum(cases), deaths = sum(deaths), 
+              cum_cases = sum(cum_cases), cum_deaths = sum(cum_deaths)) %>% 
+    mutate(state = "All states", fips = 0, county = 'All counties')
+
+# Get the county data from New York Times Github as well
+county_data <- read.delim('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
+                           sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
+    mutate(date = ymd(date), cum_cases = cases, cum_deaths = deaths) %>% 
+    group_by(state, county) %>% 
+    mutate(cases = c(cum_cases[1], diff(cum_cases)), 
+           deaths = c(cum_deaths[1], diff(cum_deaths)))
+
+# Combine everything into one
+all_data <- dplyr::bind_rows(all_us, state_data, county_data) %>% filter(cases >= 0)
+
+head(all_data, 20)
+```
+
+# Set up the Logistic Regression model
+
+Let's define our model using the equation above and use the `nlsLM` function to fit the regression model
+
+```{r logistic_regression_fn, eval=TRUE}
+lg_reg <- function(t, C, p_start=10, a_start=0.2, B_start=1, trace=FALSE){
+  results <- list()
+  
+  # define the logistic function and fit it using nlsLM
+  fit <- nlsLM(C ~ p/(1 + exp(-a * (t-B))), start = list(p=p_start, a=a_start, B=B_start), 
+               lower = c(min(C), 0, 0), trace=trace)
+  
+  results$fit <- fit
+  return(results)
+}
+```
+
+Now a function to make predictions on a given data set using the fit
+
+```{r pred_fucntion, eval=TRUE}
+make_preds <- function(t, fit) {
+  preds <- predict(fit, list(t = t))
+  return(preds)
+}
+```
+
+And finally a plotting function
+
+```{r plotting_function, eval=TRUE}
+plot_fits <- function(dat, name, type = "cases") {
+  if (type == "cases") {
+    tdat <- dat %>% 
+      mutate(inc = dat$cases, inc_preds = dat$I_preds, cum = dat$cum_cases, cum_preds = dat$C_preds) %>% 
+      select(date, inc, inc_preds, cum, cum_preds)
+  } else if (type == "deaths") {
+    tdat <- dat %>% 
+      mutate(inc = dat$deaths, inc_preds = dat$d_preds, cum = dat$cum_deaths, cum_preds = dat$D_preds) %>% 
+      select(date, inc, inc_preds, cum, cum_preds)
+  } else{
+    print(paste(type, "not supported. Please provide type as 'cases' or 'deaths'"))
+  }
+  
+  # Cumulative plot of observed vs fitted
+  C_plot <- ggplot(tdat, aes(x=date)) +
+    geom_line(aes(y = cum_preds), color = "turquoise", size = 2) +
+    geom_point(aes(y = cum), color = "magenta", shape = 1, size = 3) +
+    geom_line(aes(y = cum), color = "gray10", linetype = "dashed") + 
+    labs(x = "", y = 'Cumulative Incidence', 
+         title = paste('Cumulative', type, 'fitted vs observed in', name),
+         subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+    theme_minimal()
+  
+  # Incidence plot of observed vs fitted
+  I_plot <- ggplot(tdat, aes(x=date)) +
+    geom_line(aes(y = inc_preds), color = "turquoise", size = 2) +
+    geom_point(aes(y = inc), color = "magenta", shape = 1, size = 3) +
+    geom_line(aes(y = inc), color = "gray10", linetype = "dashed") +
+    labs(y = 'Daily Incidence', 
+         title = paste('Incident', type, 'fitted vs observed in', name),
+         subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+    theme_minimal()
+  
+  gridExtra::grid.arrange(C_plot, I_plot, ncol = 2)
+}
+```
+
+# US
+
+Let's make some predictions for US using the model defined above
+
+## Confirmed cases
+
+```{r us_projections, layout='l-body-outset', eval=TRUE, tidy=TRUE, warning=FALSE, message=FALSE}
+# Filter the database
+us <- all_data %>% filter(state == "All states", county=="All counties") %>% 
+  mutate(Day = 1:length(date))
+
+# Fit the logistic regression model
+us_lg_fit <- lg_reg(t = 1:nrow(us), us$cum_cases)
+summary(us_lg_fit$fit)
+```
+
+Looks like the model converged and we have our estimates. Projected confirmed cases is topping out at about 700,000 people (estimate of p) with a growth rate of approximately 0.196 (estimate of a). We can cofirm the growth rate by a simpler log-linear fit using the `incidence` package (can implement a log-linear fit ourselves pretty easily as well)
+
+```{r us_loglinear_fit, tidy=TRUE, layout='l-body-outset'}
+i.us <- incidence(us %>% select(date, cases) %>% uncount(cases) %>% pull(date))
+i.us.peak <- find_peak(i.us)
+i.us.fit <- incidence::fit(subset(i.us, from = ymd('2020-02-01')), split =i.us.peak)
+plot(i.us) %>% add_incidence_fit(i.us.fit$before)
+i.us.fit
+```
+Not the best fit, likely due to underreporting of confirmed cases, but the estimated growth rate, _r_, is 0.205, which is pretty close to the one predicted by logistic regression
+
+```{r us_lg_fit_plots, tidy=TRUE, warning=FALSE, message=FALSE, eval=TRUE, fig.width=10}
+# Number of days in the future to forecast
+t_fwd <-  28
+Day <- 1:(nrow(us) + t_fwd)
+# Make predictons
+us_preds <- data.frame(Day = Day, date = us$date[1] + days(Day-1)) %>%
+  mutate(C_preds = ceiling(make_preds(Day, us_lg_fit$fit)), 
+         I_preds = c(C_preds[1], diff(C_preds))) %>% 
+  left_join(us %>% ungroup() %>% select(date, cum_cases, cases))
+
+plot_fits(us_preds, name="USA", type="cases")
+```
+
+Not bad. Let's see if we can do the same for deaths
+
+## Confirmed deaths
+
+```{r us_lg_deaths_fit, eval=TRUE, tidy=TRUE}
+us_lg_deaths_fit <-  lg_reg(t = 1:nrow(us), us$cum_deaths)
+summary(us_lg_deaths_fit$fit)
+```
+
+The model expects to see close to 32,000 deaths with a growth rate of 0.23 in the early phase. Obviously, not great. Didn't help that the government did nothing in the early stages or we could have severely limited this number.
+
+Anyway, let's make some predictions
+
+```{r us_lg_deaths_fit_plots, eval=TRUE, tidy=TRUE, fig.width=10, warning=FALSE, message=FALSE}
+us_preds <- us_preds %>%
+  mutate(D_preds = ceiling(make_preds(Day, us_lg_deaths_fit$fit)), 
+         d_preds = c(D_preds[1], diff(D_preds))) %>% 
+  left_join(us %>% ungroup() %>% select(date, cum_deaths, deaths))
+
+plot_fits(us_preds, name="USA", type="deaths")
+```
+
+We are in the decline phase with the assumption that the government doesn't relax on social distancing measures, which is unpredictable given the current administration in place and its lack of ability to do even basic governance.
+
+Let' see how California is doing. 
+
+# California
+
+## Confirmed cases
+```{r ca_projections, layout='l-body-outset', eval=TRUE, tidy=TRUE, warning=FALSE, message=FALSE}
+# Filter the database
+ca <- all_data %>% filter(state == "California", county == "All counties") %>% 
+  mutate(Day = 1:length(date))
+plot(ca$date, ca$cum_cases, 'l', xlab='', ylab='Cumulative cases', main = 'Cumulative cases in California')
+```
+```{r ca_lg_fit, tidy=TRUE}
+# Fit the model
+ca_lg_fit <- lg_reg(t = 1:nrow(ca), ca$cum_cases)
+summary(ca_lg_fit$fit)
+```
+
+Max projected cases of about 29000 (estimate of p) with a growth rate of approximately 0.194. 
+
+```{r ca_lg_fit_plots, tidy=TRUE, warning=FALSE, message=FALSE, eval=TRUE, fig.width=10}
+# Number of days in the future to forecast
+t_fwd <-  28
+Day <- 1:(nrow(ca) + t_fwd)
+# Make predictons
+ca_preds <- data.frame(Day = Day, date = ca$date[1] + days(Day-1)) %>%
+  mutate(C_preds = ceiling(make_preds(Day, ca_lg_fit$fit)), 
+         I_preds = c(C_preds[1], diff(C_preds))) %>% 
+  left_join(ca %>% ungroup() %>% select(date, cum_cases, cases))
+
+plot_fits(ca_preds, name="California", type="cases")
+```
+
+Not bad. Let's see if we can do the same for deaths
+
+## Confirmed deaths
+
+```{r ca_lg_deaths_fit, eval=TRUE, tidy=TRUE}
+ca_lg_deaths_fit <-  lg_reg(t = 1:nrow(ca), ca$cum_deaths)
+summary(ca_lg_deaths_fit$fit)
+```
+
+The model expects to see about 1,000 deaths in CA, which is on the lower end (e.g., compared to CA) probably because so many public health interventions were put in place early on. 
+
+```{r ca_lg_deaths_fit_plots, eval=TRUE, tidy=TRUE, fig.width=10, warning=FALSE, message=FALSE, preview=TRUE}
+ca_preds <- ca_preds %>%
+  mutate(D_preds = ceiling(make_preds(Day, ca_lg_deaths_fit$fit)), 
+         d_preds = c(D_preds[1], diff(D_preds))) %>% 
+  left_join(ca %>% ungroup() %>% select(date, cum_deaths, deaths))
+
+plot_fits(ca_preds, name="California", type="deaths")
+```
+
+And now for a county. 
+
+# Los Angeles
+
+## Confirmed cases
+
+```{r la_projections, layout='l-body-outset', eval=TRUE, tidy=TRUE, warning=FALSE, message=FALSE}
+# Filter the database
+la <- all_data %>% filter(county == "Los Angeles") %>% 
+  mutate(Day = 1:length(date))
+plot(la$date, la$cum_cases, 'l', xlab='', ylab='Cumulative cases', main = 'Cumulative cases in Los Angeles')
+```
+```{r la_lg_fit, tidy=TRUE}
+# Fit the model
+la_lg_fit <- lg_reg(t = 1:nrow(la), la$cum_cases)
+summary(la_lg_fit$fit)
+```
+
+Max projected cases of about 10000 (estimate of p) with a growth rate of approximately 0.23. 
+
+```{r la_lg_fit_plots, tidy=TRUE, warning=FALSE, message=FALSE, eval=TRUE, fig.width=10}
+# Number of days in the future to forecast
+t_fwd <-  28
+Day <- 1:(nrow(la) + t_fwd)
+# Make predictons
+la_preds <- data.frame(Day = Day, date = la$date[1] + days(Day-1)) %>%
+  mutate(C_preds = ceiling(make_preds(Day, la_lg_fit$fit)), 
+         I_preds = c(C_preds[1], diff(C_preds))) %>% 
+  left_join(la %>% ungroup() %>% select(date, cum_cases, cases))
+
+plot_fits(la_preds, name="Los Angeles", type="cases")
+```
+
+
+## Confirmed deaths
+
+```{r la_lg_deaths_fit, eval=TRUE, tidy=TRUE}
+la_lg_deaths_fit <-  lg_reg(t = 1:nrow(la), la$cum_deaths)
+summary(la_lg_deaths_fit$fit)
+```
+
+The model expects to see about 450 deaths in Los Angeles
+
+```{r la_lg_deaths_fit_plots, eval=TRUE, tidy=TRUE, fig.width=10, warning=FALSE, message=FALSE}
+la_preds <- la_preds %>%
+  mutate(D_preds = ceiling(make_preds(Day, la_lg_deaths_fit$fit)), 
+         d_preds = c(D_preds[1], diff(D_preds))) %>% 
+  left_join(la %>% ungroup() %>% select(date, cum_deaths, deaths))
+
+plot_fits(la_preds, name="Los Angeles", type="deaths")
+```
+
+
+
+
+
+
+
+
+
+
+

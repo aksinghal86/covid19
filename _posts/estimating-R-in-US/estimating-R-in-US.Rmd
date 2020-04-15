@@ -43,6 +43,7 @@ library(projections)
 library(earlyR)
 ```
 
+# The data
 Load the data and uncumulate
 ```{r}
 # Load the state data
@@ -73,7 +74,7 @@ state_cases %>%
   theme_minimal()
 ```
 
-## EDA
+# EDA
 
 ```{r, echo=FALSE}
 # Set plotting settings
@@ -201,7 +202,7 @@ Indeed, these are good fits and can be used to extract some useful statistics. T
 i.wa.fit
 ```
 
-### Estimating the reproduction rate
+# Estimating the reproduction rate
 
 I mentioned $R_{0}$ above, which can be estimated using log-linear models as well. We need to first provide a distribution for serial interval, SI, defined as the number of days between primary and secondary onsets of symptoms. This is typically defined as a discrete gamma distribution (discrete because data are provided in days) and can be parametrized using the epitrix and distcrete packages from RECON as well. Du et al. (2020) recently reported a mean serial interval of 3.96 days and a standard deviation of 4.75, so that’s what I’ll be using here.
 
@@ -218,7 +219,7 @@ hist(growth_R0, col = "turquoise", border = "white", main = "Distribution of gro
 
 Interestingly, the median growth $R_{0}$ estimated here is significantly lower than what’s been published. I suspect that this is due to a limited number of testing available in the US, thereby suppressing the actual number of cases out there. The $R_{0}$ is not really important for our purposes though. We are interested in a general trend to see if the effective reproduction number, $R_{e}$, has gone down indicating whether the number of new infections are also trending down.
 
-### Estimating the effective reproduction number
+# Estimating the effective reproduction number
 `EpiEstim` package from RECON allows several different ways to estimate $R_{e}$, all of which are dependent on the SI distribution. We’ll use the Du et al. (2020) estimates again to specify the SI and then generate $R_{e}$.
 
 ```{r, echo = FALSE}
@@ -246,7 +247,7 @@ plot_Ri(wa_res)
 ```
 The key thing to notice here is that the $R_{e}$ is trending down and is close to 1, which is an all important threshold indicating that one infected person infects less than one person essentially signaling the death of the epidemic. You could be snarky and say, “duh! you could have predicted that from the incidence plot,” and I would retort, “yes, but you would have found that out on April 3rd at best on the day after the peak assuming it didn’t spike back up, but the effective reproductive number has been on a downtrend since the second week of March! So, there…”
 
-```{r}
+```{r}, preview=TRUE
 plot(wa_res, "R") +
   geom_hline(yintercept = 1, lty = "solid", color = "red") + 
   geom_vline(xintercept = ymd('2020-03-13'), lty = 'dashed', color = 'darkgreen', size = 1) +
@@ -486,7 +487,7 @@ i.ny.fit
 ```
 
 
-## Estimate the reproduction number
+### Estimate the reproduction number
 
 ```{r, warning=FALSE, message=FALSE}
 ny_cases <- state_cases %>% 
