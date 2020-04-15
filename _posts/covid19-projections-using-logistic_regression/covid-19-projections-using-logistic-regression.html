@@ -1019,20 +1019,77 @@
 <h1 id="set-up-the-logistic-regression-model">Set up the Logistic Regression model</h1>
 <p>Let’s define our model using the equation above and use the <code>nlsLM</code> function to fit the regression model</p>
 <div class="layout-chunk" data-layout="l-body">
-
+<pre class="r"><code>
+lg_reg &lt;- function(t, C, p_start=10, a_start=0.2, B_start=1, trace=FALSE){
+  results &lt;- list()
+  
+  # define the logistic function and fit it using nlsLM
+  fit &lt;- nlsLM(C ~ p/(1 + exp(-a * (t-B))), start = list(p=p_start, a=a_start, B=B_start), 
+               lower = c(min(C), 0, 0), trace=trace)
+  
+  results$fit &lt;- fit
+  return(results)
+}</code></pre>
 </div>
 <p>Now a function to make predictions on a given data set using the fit</p>
 <div class="layout-chunk" data-layout="l-body">
-
+<pre class="r"><code>
+make_preds &lt;- function(t, fit) {
+  preds &lt;- predict(fit, list(t = t))
+  return(preds)
+}</code></pre>
 </div>
 <p>And finally a plotting function</p>
 <div class="layout-chunk" data-layout="l-body">
-
+<pre class="r"><code>
+plot_fits &lt;- function(dat, name, type = &quot;cases&quot;) {
+  if (type == &quot;cases&quot;) {
+    tdat &lt;- dat %&gt;% 
+      mutate(inc = dat$cases, inc_preds = dat$I_preds, cum = dat$cum_cases, cum_preds = dat$C_preds) %&gt;% 
+      select(date, inc, inc_preds, cum, cum_preds)
+  } else if (type == &quot;deaths&quot;) {
+    tdat &lt;- dat %&gt;% 
+      mutate(inc = dat$deaths, inc_preds = dat$d_preds, cum = dat$cum_deaths, cum_preds = dat$D_preds) %&gt;% 
+      select(date, inc, inc_preds, cum, cum_preds)
+  } else{
+    print(paste(type, &quot;not supported. Please provide type as &#39;cases&#39; or &#39;deaths&#39;&quot;))
+  }
+  
+  # Cumulative plot of observed vs fitted
+  C_plot &lt;- ggplot(tdat, aes(x=date)) +
+    geom_line(aes(y = cum_preds), color = &quot;turquoise&quot;, size = 2) +
+    geom_point(aes(y = cum), color = &quot;magenta&quot;, shape = 1, size = 3) +
+    geom_line(aes(y = cum), color = &quot;gray10&quot;, linetype = &quot;dashed&quot;) + 
+    labs(x = &quot;&quot;, y = &#39;Cumulative Incidence&#39;, 
+         title = paste(&#39;Cumulative&#39;, type, &#39;fitted vs observed in&#39;, name),
+         subtitle = &#39;(turquoise = fitted incidence, magenta = observed incidence)&#39;) +
+    theme_minimal()
+  
+  # Incidence plot of observed vs fitted
+  I_plot &lt;- ggplot(tdat, aes(x=date)) +
+    geom_line(aes(y = inc_preds), color = &quot;turquoise&quot;, size = 2) +
+    geom_point(aes(y = inc), color = &quot;magenta&quot;, shape = 1, size = 3) +
+    geom_line(aes(y = inc), color = &quot;gray10&quot;, linetype = &quot;dashed&quot;) +
+    labs(y = &#39;Daily Incidence&#39;, 
+         title = paste(&#39;Incident&#39;, type, &#39;fitted vs observed in&#39;, name),
+         subtitle = &#39;(turquoise = fitted incidence, magenta = observed incidence)&#39;) +
+    theme_minimal()
+  
+  gridExtra::grid.arrange(C_plot, I_plot, ncol = 2)
+}</code></pre>
 </div>
 <h1 id="us">US</h1>
 <p>Let’s make some predictions for US using the model defined above</p>
 <h2 id="confirmed-cases">Confirmed cases</h2>
 <div class="layout-chunk" data-layout="l-body-outset">
+<pre class="r"><code>
+# Filter the database
+us &lt;- all_data %&gt;% filter(state == &quot;All states&quot;, county==&quot;All counties&quot;) %&gt;% 
+  mutate(Day = 1:length(date))
+
+# Fit the logistic regression model
+us_lg_fit &lt;- lg_reg(t = 1:nrow(us), us$cum_cases)
+summary(us_lg_fit$fit)</code></pre>
 <pre><code>
 Formula: C ~ p/(1 + exp(-a * (t - B)))
 
@@ -1051,7 +1108,14 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>Looks like the model converged and we have our estimates. Projected confirmed cases is topping out at about 700,000 people (estimate of p) with a growth rate of approximately 0.196 (estimate of a). We can cofirm the growth rate by a simpler log-linear fit using the <code>incidence</code> package (can implement a log-linear fit ourselves pretty easily as well)</p>
 <div class="layout-chunk" data-layout="l-body-outset">
+<pre class="r"><code>
+i.us &lt;- incidence(us %&gt;% select(date, cases) %&gt;% uncount(cases) %&gt;% pull(date))
+i.us.peak &lt;- find_peak(i.us)
+i.us.fit &lt;- incidence::fit(subset(i.us, from = ymd(&#39;2020-02-01&#39;)), split =i.us.peak)
+plot(i.us) %&gt;% add_incidence_fit(i.us.fit$before)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/us_loglinear_fit-1.png" width="624" /></p>
+<pre class="r"><code>
+i.us.fit</code></pre>
 <pre><code>
 &lt;list of incidence_fit objects&gt;
 
@@ -1092,11 +1156,25 @@ after 16.61528 -35.0684
 </div>
 <p>Not the best fit, likely due to underreporting of confirmed cases, but the estimated growth rate, <em>r</em>, is 0.205, which is pretty close to the one predicted by logistic regression</p>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+# Number of days in the future to forecast
+t_fwd &lt;-  28
+Day &lt;- 1:(nrow(us) + t_fwd)
+# Make predictons
+us_preds &lt;- data.frame(Day = Day, date = us$date[1] + days(Day-1)) %&gt;%
+  mutate(C_preds = ceiling(make_preds(Day, us_lg_fit$fit)), 
+         I_preds = c(C_preds[1], diff(C_preds))) %&gt;% 
+  left_join(us %&gt;% ungroup() %&gt;% select(date, cum_cases, cases))
+
+plot_fits(us_preds, name=&quot;USA&quot;, type=&quot;cases&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/us_lg_fit_plots-1.png" width="960" /></p>
 </div>
 <p>Not bad. Let’s see if we can do the same for deaths</p>
 <h2 id="confirmed-deaths">Confirmed deaths</h2>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+us_lg_deaths_fit &lt;-  lg_reg(t = 1:nrow(us), us$cum_deaths)
+summary(us_lg_deaths_fit$fit)</code></pre>
 <pre><code>
 Formula: C ~ p/(1 + exp(-a * (t - B)))
 
@@ -1116,6 +1194,13 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 <p>The model expects to see close to 32,000 deaths with a growth rate of 0.23 in the early phase. Obviously, not great. Didn’t help that the government did nothing in the early stages or we could have severely limited this number.</p>
 <p>Anyway, let’s make some predictions</p>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+us_preds &lt;- us_preds %&gt;%
+  mutate(D_preds = ceiling(make_preds(Day, us_lg_deaths_fit$fit)), 
+         d_preds = c(D_preds[1], diff(D_preds))) %&gt;% 
+  left_join(us %&gt;% ungroup() %&gt;% select(date, cum_deaths, deaths))
+
+plot_fits(us_preds, name=&quot;USA&quot;, type=&quot;deaths&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/us_lg_deaths_fit_plots-1.png" width="960" /></p>
 </div>
 <p>We are in the decline phase with the assumption that the government doesn’t relax on social distancing measures, which is unpredictable given the current administration in place and its lack of ability to do even basic governance.</p>
@@ -1123,9 +1208,18 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 <h1 id="california">California</h1>
 <h2 id="confirmed-cases-1">Confirmed cases</h2>
 <div class="layout-chunk" data-layout="l-body-outset">
+<pre class="r"><code>
+# Filter the database
+ca &lt;- all_data %&gt;% filter(state == &quot;California&quot;, county == &quot;All counties&quot;) %&gt;% 
+  mutate(Day = 1:length(date))
+plot(ca$date, ca$cum_cases, &#39;l&#39;, xlab=&#39;&#39;, ylab=&#39;Cumulative cases&#39;, main = &#39;Cumulative cases in California&#39;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/ca_projections-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+# Fit the model
+ca_lg_fit &lt;- lg_reg(t = 1:nrow(ca), ca$cum_cases)
+summary(ca_lg_fit$fit)</code></pre>
 <pre><code>
 Formula: C ~ p/(1 + exp(-a * (t - B)))
 
@@ -1144,11 +1238,25 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>Max projected cases of about 29000 (estimate of p) with a growth rate of approximately 0.194.</p>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+# Number of days in the future to forecast
+t_fwd &lt;-  28
+Day &lt;- 1:(nrow(ca) + t_fwd)
+# Make predictons
+ca_preds &lt;- data.frame(Day = Day, date = ca$date[1] + days(Day-1)) %&gt;%
+  mutate(C_preds = ceiling(make_preds(Day, ca_lg_fit$fit)), 
+         I_preds = c(C_preds[1], diff(C_preds))) %&gt;% 
+  left_join(ca %&gt;% ungroup() %&gt;% select(date, cum_cases, cases))
+
+plot_fits(ca_preds, name=&quot;California&quot;, type=&quot;cases&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/ca_lg_fit_plots-1.png" width="960" /></p>
 </div>
 <p>Not bad. Let’s see if we can do the same for deaths</p>
 <h2 id="confirmed-deaths-1">Confirmed deaths</h2>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+ca_lg_deaths_fit &lt;-  lg_reg(t = 1:nrow(ca), ca$cum_deaths)
+summary(ca_lg_deaths_fit$fit)</code></pre>
 <pre><code>
 Formula: C ~ p/(1 + exp(-a * (t - B)))
 
@@ -1167,15 +1275,31 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>The model expects to see about 1,000 deaths in CA, which is on the lower end (e.g., compared to CA) probably because so many public health interventions were put in place early on.</p>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+ca_preds &lt;- ca_preds %&gt;%
+  mutate(D_preds = ceiling(make_preds(Day, ca_lg_deaths_fit$fit)), 
+         d_preds = c(D_preds[1], diff(D_preds))) %&gt;% 
+  left_join(ca %&gt;% ungroup() %&gt;% select(date, cum_deaths, deaths))
+
+plot_fits(ca_preds, name=&quot;California&quot;, type=&quot;deaths&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/ca_lg_deaths_fit_plots-1.png" width="960" data-distill-preview=1 /></p>
 </div>
 <p>And now for a county.</p>
 <h1 id="los-angeles">Los Angeles</h1>
 <h2 id="confirmed-cases-2">Confirmed cases</h2>
 <div class="layout-chunk" data-layout="l-body-outset">
+<pre class="r"><code>
+# Filter the database
+la &lt;- all_data %&gt;% filter(county == &quot;Los Angeles&quot;) %&gt;% 
+  mutate(Day = 1:length(date))
+plot(la$date, la$cum_cases, &#39;l&#39;, xlab=&#39;&#39;, ylab=&#39;Cumulative cases&#39;, main = &#39;Cumulative cases in Los Angeles&#39;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/la_projections-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+# Fit the model
+la_lg_fit &lt;- lg_reg(t = 1:nrow(la), la$cum_cases)
+summary(la_lg_fit$fit)</code></pre>
 <pre><code>
 Formula: C ~ p/(1 + exp(-a * (t - B)))
 
@@ -1194,10 +1318,24 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>Max projected cases of about 10000 (estimate of p) with a growth rate of approximately 0.23.</p>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+# Number of days in the future to forecast
+t_fwd &lt;-  28
+Day &lt;- 1:(nrow(la) + t_fwd)
+# Make predictons
+la_preds &lt;- data.frame(Day = Day, date = la$date[1] + days(Day-1)) %&gt;%
+  mutate(C_preds = ceiling(make_preds(Day, la_lg_fit$fit)), 
+         I_preds = c(C_preds[1], diff(C_preds))) %&gt;% 
+  left_join(la %&gt;% ungroup() %&gt;% select(date, cum_cases, cases))
+
+plot_fits(la_preds, name=&quot;Los Angeles&quot;, type=&quot;cases&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/la_lg_fit_plots-1.png" width="960" /></p>
 </div>
 <h2 id="confirmed-deaths-2">Confirmed deaths</h2>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+la_lg_deaths_fit &lt;-  lg_reg(t = 1:nrow(la), la$cum_deaths)
+summary(la_lg_deaths_fit$fit)</code></pre>
 <pre><code>
 Formula: C ~ p/(1 + exp(-a * (t - B)))
 
@@ -1216,6 +1354,13 @@ Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>The model expects to see about 450 deaths in Los Angeles</p>
 <div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+la_preds &lt;- la_preds %&gt;%
+  mutate(D_preds = ceiling(make_preds(Day, la_lg_deaths_fit$fit)), 
+         d_preds = c(D_preds[1], diff(D_preds))) %&gt;% 
+  left_join(la %&gt;% ungroup() %&gt;% select(date, cum_deaths, deaths))
+
+plot_fits(la_preds, name=&quot;Los Angeles&quot;, type=&quot;deaths&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/la_lg_deaths_fit_plots-1.png" width="960" /></p>
 </div>
 <!--radix_placeholder_article_footer-->
