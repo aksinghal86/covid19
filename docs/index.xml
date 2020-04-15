@@ -7,7 +7,16 @@
     <description>"Explorations and projections for coronavirus"
 </description>
     <generator>Distill</generator>
-    <lastBuildDate>Tue, 14 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 15 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <item>
+      <title>COVID19 Projections using Simple Logistic Regression</title>
+      <dc:creator>Ankur Singhal</dc:creator>
+      <link>https://aksinghal86.github.io/covid19/posts/covid19-projections-using-logistic_regression</link>
+      <description>COVID19 projections by state and by county for the anticipated number of confirmed cases and deaths in the US using simple logistic regression.</description>
+      <guid>https://aksinghal86.github.io/covid19/posts/covid19-projections-using-logistic_regression</guid>
+      <pubDate>Wed, 15 Apr 2020 00:00:00 +0000</pubDate>
+      <media:content url="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-logistic_regression/covid-19-projections-using-logistic-regression_files/figure-html5/ca_lg_deaths_fit_plots-1.png" medium="image" type="image/png" width="1920" height="768"/>
+    </item>
     <item>
       <title>COVID19 projections using Generalized Richards Model</title>
       <dc:creator>Ankur Singhal</dc:creator>
@@ -15,7 +24,7 @@
       <description>Making COVID19 forecasts on confirmed cases and deaths around the world using Generalized Richards Model (GRM)</description>
       <guid>https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM</guid>
       <pubDate>Tue, 14 Apr 2020 00:00:00 +0000</pubDate>
-      <media:content url="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-4-1.png" medium="image" type="image/png" width="2688" height="2688"/>
+      <media:content url="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-42-1.png" medium="image" type="image/png" width="1920" height="768"/>
     </item>
     <item>
       <title>Estimating reproductive number R in US for COVID19</title>

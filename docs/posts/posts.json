@@ -1,5 +1,22 @@
 [
   {
+    "path": "posts/covid19-projections-using-logistic_regression/",
+    "title": "COVID19 Projections using Simple Logistic Regression",
+    "description": "COVID19 projections by state and by county for the anticipated number of confirmed cases and deaths in the US using simple logistic regression.",
+    "author": [
+      {
+        "name": "Ankur Singhal",
+        "url": "https://aksinghal86.github.io/covid19"
+      }
+    ],
+    "date": "2020-04-15",
+    "categories": [],
+    "preview": "posts/covid19-projections-using-logistic_regression/covid-19-projections-using-logistic-regression_files/figure-html5/ca_lg_deaths_fit_plots-1.png",
+    "last_modified": "2020-04-14T21:00:34-07:00",
+    "preview_width": 1920,
+    "preview_height": 768
+  },
+  {
     "path": "posts/covid19-projections-using-GRM/",
     "title": "COVID19 projections using Generalized Richards Model",
     "description": "Making COVID19 forecasts on confirmed cases and deaths around the world using Generalized Richards Model (GRM)",
@@ -14,10 +31,10 @@
       "R",
       "COVID-19"
     ],
-    "preview": "posts/covid19-projections-using-GRM/covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-25-1.png",
-    "last_modified": "2020-04-14T09:54:10-07:00",
-    "preview_width": 2688,
-    "preview_height": 2688
+    "preview": "posts/covid19-projections-using-GRM/covid19-projections-using-GRM_files/figure-html5/unnamed-chunk-42-1.png",
+    "last_modified": "2020-04-14T20:56:48-07:00",
+    "preview_width": 1920,
+    "preview_height": 768
   },
   {
     "path": "posts/estimating-R-in-US/",
@@ -34,8 +51,8 @@
       "R",
       "COVID-19"
     ],
-    "preview": "posts/estimating-R-in-US/estimating-R-in-US_files/figure-html5/unnamed-chunk-19-1.png",
-    "last_modified": "2020-04-14T09:29:42-07:00",
+    "preview": "posts/estimating-R-in-US/estimating-R-in-US_files/figure-html5/unnamed-chunk-1-1.png",
+    "last_modified": "2020-04-14T20:58:42-07:00",
     "preview_width": 1248,
     "preview_height": 768
   }
