@@ -1363,6 +1363,7 @@ la_preds &lt;- la_preds %&gt;%
 plot_fits(la_preds, name=&quot;Los Angeles&quot;, type=&quot;deaths&quot;)</code></pre>
 <p><img src="covid-19-projections-using-logistic-regression_files/figure-html5/la_lg_deaths_fit_plots-1.png" width="960" /></p>
 </div>
+<p>The projections above are not a bad start as preliminary projections, but there are several glaring limitations. We have not accounted for the delay in deaths that may happen post public health interventions or accounted for covariance between parameters or the uncertainty around them. That’s critical for real-life projections where you should be controlling for the known parameters and modeling the uncertainty and variance in them. In fact, you can see in the IHME plots that their projections are in fact signifcantly higher than our projections precisely because of these factors.</p>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>

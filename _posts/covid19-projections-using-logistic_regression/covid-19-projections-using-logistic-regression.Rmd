@@ -317,8 +317,7 @@ la_preds <- la_preds %>%
 plot_fits(la_preds, name="Los Angeles", type="deaths")
 ```
 
-
-
+The projections above are not a bad start as preliminary projections, but there are several glaring limitations. We have not accounted for the delay in deaths that may happen post public health interventions or accounted for covariance between parameters or the uncertainty around them. That's critical for real-life projections where you should be controlling for the known parameters and modeling the uncertainty and variance in them. In fact, you can see in the IHME plots that their projections are in fact signifcantly higher than our projections precisely because of these factors. 
 
 
 

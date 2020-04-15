@@ -4,12 +4,14 @@ library(shinythemes)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
 library(lubridate)
 library(incidence)
 library(epitrix)
 library(distcrete)
 library(EpiEstim)
 library(earlyR)
+library(minpack.lm)
 
 
 
@@ -96,17 +98,22 @@ ui <- fluidPage(
                                  tags$a(href = "https://medium.com/@aksinghal.aks/exploring-covid-19-progression-in-the-us-using-r-7449cc10b0ea",
                                         "this post.")), 
                          plotOutput(outputId = "resplot")), 
-                tabPanel("Force of infection",
-                         tags$h4("\nLastly, we can look at the force of infection plot to identify a trend. Without
-                                 worrying about the details, if the lambdas (the height of the bar), is decreasing,
-                                 it's a good sign that the number of infections is decreasing as well.\n"),
-                         plotOutput(outputId = "lambdaplot"))
+                # tabPanel("Force of infection",
+                #          tags$h4("\nLastly, we can look at the force of infection plot to identify a trend. Without
+                #                  worrying about the details, if the lambdas (the height of the bar), is decreasing,
+                #                  it's a good sign that the number of infections is decreasing as well.\n"),
+                #          plotOutput(outputId = "lambdaplot")),
                 # tabPanel("AQI",
                 #          plotOutput(outputId = "aqiplot"))
-                # tabPanel("Projections", 
-                #          tags$h4("Projections using Richard's model, i.e., Generalized Logistic Regression"), 
-                #          plotOutput(outputId = "case_projections"), 
-                #          plotOutput(outputId = "death_projections"))
+                tabPanel("Preliminary projections",
+                         tags$h4("Projections using simple logistic regression. 
+                                Note though that these are very preliminary! 
+                                Haven't accounted for the uncertainty in the parameters or 
+                                 accounted for public health interventions"),
+                         plotOutput(outputId = "cum_case_projections"), 
+                         plotOutput(outputId = "inc_case_projections"), 
+                         plotOutput(outputId = "cum_death_projections"),
+                         plotOutput(outputId = "inc_death_projections"))
             )
         )
     ), 
@@ -187,7 +194,7 @@ server <- function(input, output) {
             my_theme
     })
     
-    incidence_objects <- function(dat){
+    incidence_objects <- function(){
         inc_cases <- selected_data() %>%
             ungroup(state) %>%
             select(date, cases) %>%
@@ -246,16 +253,82 @@ server <- function(input, output) {
     })
     
     # Force of infection plot
-    output$lambdaplot <- renderPlot({
-        simple_R <- get_R(incidence_objects()$i, si_mean = mu, si_sd = sigma, max_R = 8)
-        plot(simple_R, 'lambdas', bty = 'n') +
+    # output$lambdaplot <- renderPlot({
+    #     simple_R <- get_R(incidence_objects()$i, si_mean = mu, si_sd = sigma, max_R = 8)
+    #     plot(simple_R, 'lambdas', bty = 'n') +
+    #         my_theme
+    #     abline(v = today(), col = 'darkturquoise', lty = 'dashed', lwd = 2)
+    # })
+    # 
+    logistic_regresson_preds <- function(){
+        # set the x and y values for logistic regression
+        C <- selected_data()$cum_cases
+        D <- selected_data()$cum_deaths
+        t <- 1:nrow(selected_data()) # nlsLM doesn't take dates
+        
+        # Fit logistic regression
+        cases_fit <- nlsLM(C ~ p/(1 + exp(-a * (t-B))), start = list(p=10, a=0.2, B=1), lower = c(min(C), 0, 0))
+        deaths_fit <- nlsLM(D ~ p/(1 + exp(-a * (t-B))), start = list(p=10, a=0.2, B=1), lower = c(min(C), 0, 0))
+        
+        # Predict two months in the future
+        Day <- 1:(nrow(selected_data()) + 60)
+        preds <- data.frame(date = selected_data()$date[1] + days(Day-1)) %>% 
+            mutate(C_preds = ceiling(predict(cases_fit, list(t = Day))),
+                   I_preds = c(C_preds[1], diff(C_preds)), 
+                   D_preds = ceiling(predict(deaths_fit, list(t = Day))),
+                   d_preds = c(D_preds[1], diff(D_preds))) %>% 
+            left_join(selected_data() %>% ungroup() %>% select(date, cum_cases, cases, cum_deaths, deaths))
+        
+        return(preds)
+    }
+    
+    # Logistic Regression plots
+    output$cum_case_projections <- renderPlot({
+        ggplot(logistic_regresson_preds(), aes(x=date)) +
+            geom_line(aes(y=C_preds), color = "turquoise", size = 2) +
+            geom_point(aes(y=cum_cases), color = "magenta", shape = 1, size = 3) +
+            geom_line(aes(y=cum_cases), color = "gray10", linetype = "dashed") + 
+            labs(x = "", y = 'Cumulative Incidence', 
+                 title = paste('Cumulative cases fitted vs observed in', input$county, ",", input$state),
+                 subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
             my_theme
-        abline(v = today(), col = 'darkturquoise', lty = 'dashed', lwd = 2)
     })
     
-    # output$case_projections <- renderPlot{(
-    #     plot()
-    # )}
+    output$inc_case_projections <- renderPlot({
+        ggplot(data=logistic_regresson_preds(), aes(x=date)) +
+            geom_line(aes(y=I_preds), color = "turquoise", size = 2) +
+            geom_point(aes(y=cases), color = "magenta", shape = 1, size = 3) +
+            geom_line(aes(x=date, y=cases), color = "gray10", linetype = "dashed") + 
+            labs(x = "", y = 'Daily Incidence', 
+                 title = paste('Daily cases fitted vs observed in', input$county, ",", input$state),
+                 subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+            my_theme
+    })
+    
+    
+    output$cum_death_projections <- renderPlot({
+        ggplot(logistic_regresson_preds(), aes(x=date)) +
+            geom_line(aes(y=D_preds), color = "red", size = 2) +
+            geom_point(aes(y=cum_deaths), color = "orange", shape = 1, size = 3) +
+            geom_line(aes(y=cum_deaths), color = "gray10", linetype = "dashed") + 
+            labs(x = "", y = 'Cumulative Incidence', 
+                 title = paste('Cumulative deaths fitted vs observed in', input$county, ",", input$state),
+                 subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+            my_theme
+    })
+    
+    output$inc_death_projections <- renderPlot({
+        ggplot() +
+            geom_line(data=logistic_regresson_preds(), aes(x=date, y=d_preds), color = "red", size = 2) +
+            geom_point(data=selected_data(), aes(x=date, y=deaths), color = "orange", shape = 1, size = 3) +
+            geom_line(data=selected_data(), aes(x=date, y=deaths), color = "gray10", linetype = "dashed") + 
+            labs(x = "", y = 'Daily Incidence', 
+                 title = paste('Daily deaths fitted vs observed in',  input$county, ",", input$state),
+                 subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
+            my_theme
+    })
+    
+    
     # output$aqiplot <- renderPlot({
     #     aqi_data %>% filter(state %in% input$state, county %in% input$county) %>%
     #         ggplot(., aes(x = date, y = aqi)) +
