@@ -1,0 +1,57 @@
+---
+title: "covid19_data_updater"
+author: "Ankur Singhal"
+output: html_document
+rmd_output_metadata:
+  rsc_output_files:
+    "covid19_us_data.csv"
+---
+
+```{r}
+library(tidyr)
+library(dplyr)
+```
+
+
+```{r}
+# Public health interventions
+interventions <- read.delim('data/interventions.csv', sep = ",", header = TRUE, stringsAsFactors = FALSE) %>% 
+    mutate(stay_at_home = mdy(stay_at_home), 
+           ed_facilities = mdy(ed_facilities), 
+           non_essential = mdy(non_essential))
+
+# COVID19 data
+# state_data <- read.delim('data/covid-19-data/us-states.csv', sep=",", header = TRUE, stringsAsFactors = FALSE) %>%
+state_data <- read.delim('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv',
+                          sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
+    mutate(date = ymd(date), cum_cases = cases, cum_deaths = deaths) %>%
+    group_by(state) %>% 
+    mutate(cases = c(cum_cases[1], diff(cum_cases)), 
+           deaths = c(cum_deaths[1], diff(cum_deaths)), 
+           county = "All counties")
+
+all_us <- state_data %>% 
+    group_by(date) %>% 
+    summarize(cases = sum(cases), deaths = sum(deaths), 
+              cum_cases = sum(cum_cases), cum_deaths = sum(cum_deaths)) %>% 
+    mutate(state = "All states", fips = 0, county = 'All counties')
+
+
+# county_data <- read.delim('data/covid-19-data/us-counties.csv', sep=",", header = TRUE, stringsAsFactors = FALSE) %>%
+county_data <- read.delim('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
+                           sep = ',', header = TRUE, stringsAsFactors = FALSE) %>%
+    mutate(date = ymd(date), cum_cases = cases, cum_deaths = deaths) %>% 
+    group_by(state, county) %>% 
+    mutate(cases = c(cum_cases[1], diff(cum_cases)), 
+           deaths = c(cum_deaths[1], diff(cum_deaths)))
+
+all_data <- dplyr::bind_rows(all_us, state_data, county_data) %>% 
+    left_join(interventions, by = "state") %>%
+    filter(cases >= 0)
+```
+
+
+```{r}
+write.csv(all_data, 'data/covid19_us_data.csv', row.names=FALSE)
+```
+
