@@ -977,7 +977,7 @@
 </nav>
 <hr class="d-toc-separator"/>
 <h1 id="background">Background</h1>
-<p>In the [previous post] (<a href="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/" class="uri">https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/</a>), I used Generalized Richard’s Model, also known as Generalized Logistic Regression, to make some predictions for various countries around the world, but by the end of the article, I realized that fits were just as good, if not better, and much much faster by using just a simple logistic regression model. Part of the problem is that GRM is too sensitive to starting conditions, which ironically does not <em>generalize</em> well to all the countries and provinces/states. In fact, the highly respected and influential projections made by [IHME] (<a href="https://covid19.healthdata.org" class="uri">https://covid19.healthdata.org</a>) also uses simple logistic regression, with a bunch of other statistical measures added in to control for variability for each parameter.</p>
+<p>In the <a href="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/">previous post</a>, I used Generalized Richard’s Model, also known as Generalized Logistic Regression, to make some predictions for various countries around the world, but by the end of the article, I realized that fits were just as good, if not better, and much much faster by using just a simple logistic regression model. Part of the problem is that GRM is too sensitive to starting conditions, which ironically does not <em>generalize</em> well to all the countries and provinces/states. In fact, the highly respected and influential projections made by <a href="https://covid19.healthdata.org">IHME</a> also uses simple logistic regression, with a bunch of other statistical measures added in to control for variability for each parameter.</p>
 <p>The motivation behind this article is to make some predictions at the US state and county level using simple logistic regression, which is of the form:</p>
 <p><span class="math display">\[C(t) = p/(1+exp(- \alpha\ (t- \beta\ ))\]</span>, where:</p>
 <ul>
@@ -985,10 +985,10 @@
 <li><span class="math inline">\(\alpha\)</span> is the growth rate prior to the peak of the infections; and</li>
 <li><span class="math inline">\(\beta\)</span> is where rate of change is maximal</li>
 </ul>
-<p>Reference: [IHME] (<a href="https://ihmeuw-msca.github.io/CurveFit/methods/" class="uri">https://ihmeuw-msca.github.io/CurveFit/methods/</a>)</p>
+<p>Reference: <a href="https://ihmeuw-msca.github.io/CurveFit/methods/">IHME</a></p>
 <p>We’ll make our fits using the <code>nlsLM</code> function from the <code>minpack.lm</code> package, which uses the <em>Levenberg-Marquardt</em> method for fitting.</p>
 <h1 id="the-data">The Data</h1>
-<p>For now, I’ll start with US by state and by counties (where there are enough data points) for purposes of incorporating this into the [shiny app] (<a href="https://aksinghal86.shinyapp.io/covid19/" class="uri">https://aksinghal86.shinyapp.io/covid19/</a>)</p>
+<p>For now, I’ll start with US by state and by counties (where there are enough data points) for purposes of incorporating this into the <a href="https://aksinghal86.shinyapp.io/covid19/">shiny app</a></p>
 <p>Let’s use the data provided by NY Times Github because that’s what’s being used in the app</p>
 <div class="layout-chunk" data-layout="l-body-outset">
 <pre><code>
@@ -1095,13 +1095,13 @@ Formula: C ~ p/(1 + exp(-a * (t - B)))
 
 Parameters:
    Estimate Std. Error t value Pr(&gt;|t|)    
-p 6.975e+05  9.392e+03   74.27   &lt;2e-16 ***
-a 1.960e-01  2.897e-03   67.65   &lt;2e-16 ***
-B 7.628e+01  1.701e-01  448.32   &lt;2e-16 ***
+p 7.831e+05  9.762e+03   80.22   &lt;2e-16 ***
+a 1.795e-01  2.921e-03   61.44   &lt;2e-16 ***
+B 7.771e+01  1.818e-01  427.47   &lt;2e-16 ***
 ---
 Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 
-Residual standard error: 4369 on 81 degrees of freedom
+Residual standard error: 6353 on 85 degrees of freedom
 
 Number of iterations to convergence: 20 
 Achieved convergence tolerance: 1.49e-08</code></pre>
@@ -1128,13 +1128,13 @@ $model: regression of log-incidence over time
 
 $info: list containing the following items:
   $r (daily growth rate):
-     before       after 
- 0.20474865 -0.01097594 
+      before        after 
+ 0.204748646 -0.004421973 
 
   $r.conf (confidence interval):
              2.5 %     97.5 %
 before  0.18846953 0.22102776
-after  -0.04171745 0.01976558
+after  -0.02024308 0.01139914
 
   $doubling (doubling time in days):
   before 
@@ -1146,13 +1146,13 @@ before 3.136019 3.677768
 
   $halving (halving time in days):
    after 
-63.15152 
+156.7506 
 
   $halving.conf (confidence interval):
-         2.5 %   97.5 %
-after 16.61528 -35.0684
+         2.5 %  97.5 %
+after 34.24119 -60.807
 
-  $pred: data.frame of incidence predictions (59 rows, 6 columns)</code></pre>
+  $pred: data.frame of incidence predictions (63 rows, 6 columns)</code></pre>
 </div>
 <p>Not the best fit, likely due to underreporting of confirmed cases, but the estimated growth rate, <em>r</em>, is 0.205, which is pretty close to the one predicted by logistic regression</p>
 <div class="layout-chunk" data-layout="l-body">
@@ -1180,15 +1180,15 @@ Formula: C ~ p/(1 + exp(-a * (t - B)))
 
 Parameters:
    Estimate Std. Error t value Pr(&gt;|t|)    
-p 3.264e+04  3.812e+02   85.64   &lt;2e-16 ***
-a 2.278e-01  2.118e-03  107.55   &lt;2e-16 ***
-B 7.976e+01  1.153e-01  691.70   &lt;2e-16 ***
+p 4.291e+04  7.975e+02   53.81   &lt;2e-16 ***
+a 1.967e-01  3.125e-03   62.94   &lt;2e-16 ***
+B 8.245e+01  2.170e-01  379.93   &lt;2e-16 ***
 ---
 Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 
-Residual standard error: 94.38 on 81 degrees of freedom
+Residual standard error: 240.8 on 85 degrees of freedom
 
-Number of iterations to convergence: 25 
+Number of iterations to convergence: 26 
 Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>The model expects to see close to 32,000 deaths with a growth rate of 0.23 in the early phase. Obviously, not great. Didn’t help that the government did nothing in the early stages or we could have severely limited this number.</p>
@@ -1225,15 +1225,15 @@ Formula: C ~ p/(1 + exp(-a * (t - B)))
 
 Parameters:
    Estimate Std. Error t value Pr(&gt;|t|)    
-p 2.869e+04  1.535e+02   187.0   &lt;2e-16 ***
-a 1.940e-01  1.233e-03   157.4   &lt;2e-16 ***
-B 7.145e+01  6.999e-02  1020.9   &lt;2e-16 ***
+p 3.254e+04  3.511e+02   92.68   &lt;2e-16 ***
+a 1.752e-01  2.553e-03   68.60   &lt;2e-16 ***
+B 7.305e+01  1.631e-01  447.93   &lt;2e-16 ***
 ---
 Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 
-Residual standard error: 82 on 77 degrees of freedom
+Residual standard error: 244.8 on 81 degrees of freedom
 
-Number of iterations to convergence: 25 
+Number of iterations to convergence: 31 
 Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>Max projected cases of about 29000 (estimate of p) with a growth rate of approximately 0.194.</p>
@@ -1262,15 +1262,15 @@ Formula: C ~ p/(1 + exp(-a * (t - B)))
 
 Parameters:
    Estimate Std. Error t value Pr(&gt;|t|)    
-p 1.017e+03  1.559e+01   65.22   &lt;2e-16 ***
-a 1.870e-01  2.147e-03   87.06   &lt;2e-16 ***
-B 7.524e+01  1.812e-01  415.23   &lt;2e-16 ***
+p 1.638e+03  7.688e+01   21.31   &lt;2e-16 ***
+a 1.513e-01  3.946e-03   38.33   &lt;2e-16 ***
+B 8.086e+01  6.293e-01  128.49   &lt;2e-16 ***
 ---
 Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 
-Residual standard error: 3.829 on 77 degrees of freedom
+Residual standard error: 12.32 on 81 degrees of freedom
 
-Number of iterations to convergence: 14 
+Number of iterations to convergence: 15 
 Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>The model expects to see about 1,000 deaths in CA, which is on the lower end (e.g., compared to CA) probably because so many public health interventions were put in place early on.</p>
@@ -1305,15 +1305,15 @@ Formula: C ~ p/(1 + exp(-a * (t - B)))
 
 Parameters:
    Estimate Std. Error t value Pr(&gt;|t|)    
-p 1.063e+04  5.520e+01   192.5   &lt;2e-16 ***
-a 2.307e-01  1.746e-03   132.2   &lt;2e-16 ***
-B 7.013e+01  6.116e-02  1146.6   &lt;2e-16 ***
+p 1.188e+04  1.165e+02  101.93   &lt;2e-16 ***
+a 2.066e-01  3.434e-03   60.15   &lt;2e-16 ***
+B 7.140e+01  1.364e-01  523.55   &lt;2e-16 ***
 ---
 Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 
-Residual standard error: 37.95 on 76 degrees of freedom
+Residual standard error: 108.3 on 80 degrees of freedom
 
-Number of iterations to convergence: 24 
+Number of iterations to convergence: 26 
 Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>Max projected cases of about 10000 (estimate of p) with a growth rate of approximately 0.23.</p>
@@ -1341,15 +1341,15 @@ Formula: C ~ p/(1 + exp(-a * (t - B)))
 
 Parameters:
    Estimate Std. Error t value Pr(&gt;|t|)    
-p 4.655e+02  9.573e+00   48.63   &lt;2e-16 ***
-a 2.148e-01  3.049e-03   70.43   &lt;2e-16 ***
-B 7.548e+01  2.067e-01  365.27   &lt;2e-16 ***
+p 8.736e+02  4.666e+01   18.72   &lt;2e-16 ***
+a 1.693e-01  4.164e-03   40.66   &lt;2e-16 ***
+B 8.174e+01  6.069e-01  134.68   &lt;2e-16 ***
 ---
 Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 
-Residual standard error: 1.897 on 76 degrees of freedom
+Residual standard error: 5.005 on 80 degrees of freedom
 
-Number of iterations to convergence: 14 
+Number of iterations to convergence: 17 
 Achieved convergence tolerance: 1.49e-08</code></pre>
 </div>
 <p>The model expects to see about 450 deaths in Los Angeles</p>

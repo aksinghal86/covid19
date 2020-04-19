@@ -32,7 +32,7 @@ library(incidence)
 
 # Background 
 
-In the [previous post] (https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/), I used Generalized Richard's Model, also known as Generalized Logistic Regression, to make some predictions for various countries around the world, but by the end of the article, I realized that fits were just as good, if not better, and much much faster by using just a simple logistic regression model. Part of the problem is that GRM is too sensitive to starting conditions, which ironically does not _generalize_ well to all the countries and provinces/states. In fact, the highly respected and influential projections made by [IHME] (https://covid19.healthdata.org) also uses simple logistic regression, with a bunch of other statistical measures added in to control for variability for each parameter. 
+In the [previous post](https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/), I used Generalized Richard's Model, also known as Generalized Logistic Regression, to make some predictions for various countries around the world, but by the end of the article, I realized that fits were just as good, if not better, and much much faster by using just a simple logistic regression model. Part of the problem is that GRM is too sensitive to starting conditions, which ironically does not _generalize_ well to all the countries and provinces/states. In fact, the highly respected and influential projections made by [IHME](https://covid19.healthdata.org) also uses simple logistic regression, with a bunch of other statistical measures added in to control for variability for each parameter. 
 
 The motivation behind this article is to make some predictions at the US state and county level using simple logistic regression, which is of the form: 
 
@@ -42,13 +42,13 @@ The motivation behind this article is to make some predictions at the US state a
  - \(\alpha\) is the growth rate prior to the peak of the infections; and
  - \(\beta\) is where rate of change is maximal
 
-Reference: [IHME] (https://ihmeuw-msca.github.io/CurveFit/methods/)  
+Reference: [IHME](https://ihmeuw-msca.github.io/CurveFit/methods/)  
 
 We'll make our fits using the `nlsLM` function from the `minpack.lm` package, which uses the _Levenberg-Marquardt_ method for fitting.
 
 # The Data
 
-For now, I'll start with US by state and by counties (where there are enough data points) for purposes of incorporating this into the [shiny app] (https://aksinghal86.shinyapp.io/covid19/)
+For now, I'll start with US by state and by counties (where there are enough data points) for purposes of incorporating this into the [shiny app](https://aksinghal86.shinyapp.io/covid19/)
 
 Let's use the data provided by NY Times Github because that's what's being used in the app
 
