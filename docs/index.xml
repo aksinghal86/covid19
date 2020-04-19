@@ -7,7 +7,15 @@
     <description>"Explorations and projections for coronavirus"
 </description>
     <generator>Distill</generator>
-    <lastBuildDate>Wed, 15 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sat, 18 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <item>
+      <title>COVID19 Interactive Shiny App</title>
+      <dc:creator>Ankur Singhal</dc:creator>
+      <link>https://aksinghal86.github.io/covid19/posts/covid19-shiny-app</link>
+      <description>Pointer to an interactive Shiny app to play with projection models</description>
+      <guid>https://aksinghal86.github.io/covid19/posts/covid19-shiny-app</guid>
+      <pubDate>Sat, 18 Apr 2020 00:00:00 +0000</pubDate>
+    </item>
     <item>
       <title>COVID19 Projections using Simple Logistic Regression</title>
       <dc:creator>Ankur Singhal</dc:creator>

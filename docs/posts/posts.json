@@ -1,5 +1,20 @@
 [
   {
+    "path": "posts/covid19-shiny-app/",
+    "title": "COVID19 Interactive Shiny App",
+    "description": "Pointer to an interactive Shiny app to play with projection models",
+    "author": [
+      {
+        "name": "Ankur Singhal",
+        "url": "https://aksinghal86.github.io/covid19"
+      }
+    ],
+    "date": "2020-04-18",
+    "categories": [],
+    "preview": {},
+    "last_modified": "2020-04-18T22:04:45-07:00"
+  },
+  {
     "path": "posts/covid19-projections-using-logistic_regression/",
     "title": "COVID19 Projections using Simple Logistic Regression",
     "description": "COVID19 projections by state and by county for the anticipated number of confirmed cases and deaths in the US using simple logistic regression.",
