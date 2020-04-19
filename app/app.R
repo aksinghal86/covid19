@@ -96,6 +96,33 @@ simple_logistic_regression <- function(t, y) {
     return(fit)
 }
 
+# Function to make a prediction db from logistic regression fit
+make_preds <- function(dat, type) {
+    if (type == "cases") {
+        dat <- dat %>% ungroup %>% select(date, cum_cases, cases)
+        t <- 1:nrow(dat)
+        y <- dat$cum_cases
+    } else if (type == "deaths") {
+        dat <- dat %>% ungroup %>% select(date, cum_deaths, deaths)
+        t <- 1:nrow(dat)
+        y <- dat$cum_deaths
+    } else{
+        return("Error! Incorrect type provided; type must be either 'cases' or 'deaths'")
+    }
+    
+    # Fit regression model
+    mod_fit <- simple_logistic_regression(t, y)
+    
+    # Make predctions and create a database
+    Day <- 1:(nrow(dat) + tfwd)
+    preds <- data.frame(date = dat$date[1] + days(Day-1)) %>%
+        mutate(cum_pred = ceiling(predict(mod_fit, list(t = Day))),
+               inc_pred = c(cum_pred[1], diff(cum_pred))) %>%
+        left_join(dat, by = "date")
+
+    return(list('mod_fit'=mod_fit, 'preds'=preds))
+}
+
 #### Plotting functions ####
 # Set default theme 
 my_theme <- theme_minimal() +
@@ -206,42 +233,57 @@ lambda_plot <- function(inc_obj, county, state) {
 }
 
 # Projection plots for daily and cumulative cases using simple logistic regression
-simple_logistic_cases_proj_plots <- function(dat, county, state) {
-    dat <- dat %>% ungroup %>% select(date, cum_cases, cases)
-    
-    # Fit regression model
-    t <- 1:nrow(dat) # logistic regression model doesn't take dates so pass in days
-    y <- dat$cum_cases # Set y
-    fit <- simple_logistic_regression(t, y)
-    
-    # Make predictions
-    Day <- 1:(nrow(dat) + tfwd)
-    preds <- data.frame(date = dat$date[1] + days(Day-1)) %>%
-        mutate(cum_pred = ceiling(predict(fit, list(t = Day))),
-               inc_pred = c(cum_pred[1], diff(cum_pred))) %>%
-        left_join(dat, by = "date")
-    
-    # Cumulative plot with projections
-    cum_plot <- ggplot(preds, aes(x=date)) +
+logistic_regression_fits <- function(dat, county, state) {
+    cases_preds <- make_preds(dat, type = "cases")
+    deaths_preds <- make_preds(dat, type = "deaths")
+
+    # Cumulative plot for cases with projections
+    cum_cases_plot <- ggplot(cases_preds$preds, aes(x=date)) +
         geom_line(aes(y=cum_pred), color = "turquoise", size = 2) +
         geom_point(aes(y=cum_cases), color = "darkcyan", shape = 1, size = 3) +
         geom_line(aes(y=cum_cases), color = "gray10", linetype = "dashed") +
         labs(x = "", y = 'Cumulative Incidence',
              title = paste('Cumulative cases fitted vs observed in', county, ",", state),
-             subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
-        my_theme
+             subtitle = '(line = fitted incidence, circle = observed incidence)') +
+        my_theme +
+        scale_y_continuous(labels = ks)
     
-    # Epi plot with projections
-    epi_plot <- ggplot(preds, aes(x=date)) +
+    # Epi plot for cases with projections
+    epi_cases_plot <- ggplot(cases_preds$preds, aes(x=date)) +
         geom_line(aes(y=inc_pred), color = "turquoise", size = 2) +
         geom_point(aes(y=cases), color = "darkcyan", shape = 1, size = 3) +
         geom_line(aes(y=cases), color = "gray10", linetype = "dashed") +
         labs(x = "", y = 'Daily incidence',
              title = paste('Daily cases fitted vs observed in', county, ",", state),
-             subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
-        my_theme
+             subtitle = '(solid line = fitted incidence, circle = observed incidence)') +
+        my_theme +
+        scale_y_continuous(labels = ks)
     
-    return(list('cum_plot' = cum_plot, 'epi_plot' = epi_plot))
+    # Cumulative plot for deaths with projections
+    cum_deaths_plot <- ggplot(deaths_preds$preds, aes(x=date)) +
+        geom_line(aes(y=cum_pred), color = "orange", size = 2) +
+        geom_point(aes(y=cum_deaths), color = "tan1", shape = 1, size = 3) +
+        geom_line(aes(y=cum_deaths), color = "gray10", linetype = "dashed") +
+        labs(x = "", y = 'Cumulative Incidence',
+             title = paste('Cumulative deaths fitted vs observed in', county, ",", state),
+             subtitle = '(solid line = fitted incidence, circle = observed incidence)') +
+        my_theme +
+        scale_y_continuous(labels = ks)
+    
+    # Epi plot for deaths with projections
+    epi_deaths_plot <- ggplot(deaths_preds$preds, aes(x=date)) +
+        geom_line(aes(y=inc_pred), color = "orange", size = 2) +
+        geom_point(aes(y=deaths), color = "tan1", shape = 1, size = 3) +
+        geom_line(aes(y=deaths), color = "gray10", linetype = "dashed") +
+        labs(x = "", y = 'Daily incidence',
+             title = paste('Daily deaths vs observed in', county, ",", state),
+             subtitle = '(solid line = fitted incidence, circle = observed incidence)') +
+        my_theme +
+        scale_y_continuous(labels = ks)
+    
+    return(list('cases_fit' = cases_preds$mod_fit, 'deaths_fit' = deaths_preds$mod_fit,
+                'cum_cases_plot' = cum_cases_plot, 'epi_cases_plot' = epi_cases_plot,
+                'cum_deaths_plot' = cum_deaths_plot, 'epi_deaths_plot' = epi_deaths_plot))
 }
 
 # Projection plots for daily and cumulative deaths using simple logistic regression
@@ -262,24 +304,7 @@ simple_logistic_deaths_proj_plots <- function(dat, county, state) {
     
     
     # Cumulative plot with projections
-    cum_plot <- ggplot(preds, aes(x=date)) +
-        geom_line(aes(y=cum_pred), color = "orange", size = 2) +
-        geom_point(aes(y=cum_deaths), color = "tan1", shape = 1, size = 3) +
-        geom_line(aes(y=cum_deaths), color = "gray10", linetype = "dashed") +
-        labs(x = "", y = 'Cumulative Incidence',
-             title = paste('Cumulative deaths fitted vs observed in', county, ",", state),
-             subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
-        my_theme
-    
-    # Epi plot with projections
-    epi_plot <- ggplot(preds, aes(x=date)) +
-        geom_line(aes(y=inc_pred), color = "orange", size = 2) +
-        geom_point(aes(y=deaths), color = "tan1", shape = 1, size = 3) +
-        geom_line(aes(y=deaths), color = "gray10", linetype = "dashed") +
-        labs(x = "", y = 'Daily incidence',
-             title = paste('Daily deaths vs observed in', county, ",", state),
-             subtitle = '(turquoise = fitted incidence, magenta = observed incidence)') +
-        my_theme
+   
     
     return(list('cum_plot' = cum_plot, 'epi_plot' = epi_plot))
 }
@@ -303,14 +328,14 @@ ui <- fluidPage(
                 tabPanel("Summary plots", 
                          tags$h4('Cumulative plot'),
                          tags$div(
-                             "Below are summary plots based on observed data from The New York Time. 
+                             "Below are summary plots based on observed data from The New York Times. 
                              The first plot below shows cumulative cases and deaths on a", tags$b(tags$em("log")), "scale."
                              ),
                          tags$br(), 
                          plotOutput(outputId = "cum_log_plot"), 
                          tags$h4("Daily incident plots"),
                          tags$div(
-                             "The plot below is for observed confirmed daily cases and deaths reported by The New York Time, but", 
+                             "The plot below is for observed confirmed daily cases and deaths reported by The New York Times, but", 
                              tags$span(style="color:red", tags$b(tags$em("note that the deaths are scaled by 10"))), ", i.e., 
                              deaths are multiplied by 10 for visualization purposes.", 
                              tags$b("These are NOT actual deaths!")
@@ -331,8 +356,12 @@ ui <- fluidPage(
                              "b is the intercept.", 
                              tags$br(), tags$br(),
                              "Obviously you would need to fit two loglinear models -- one for the growth phase and one for the decay phase. 
-                             But, here I have only fit one model to the growth phase because, in most cases for now, there are not enough data points
-                             to fit a model to the decay phase. We will be able to do that in a couple of days once we are past the peak.",
+                             But, here I have only fit one model to the growth phase because, in most cases for now, there are not enough 
+                             data points to fit a model to the decay phase. We will be able to do that in a couple of days once we are
+                             past the peak. I have written a post about this on ", 
+                             tags$a(href="https://aksinghal86.github.io/covid19/posts/estimating-R-in-US/", "my blog"), "and on ",
+                             tags$a(href="https://medium.com/@aksinghal.aks/exploring-covid-19-progression-in-the-us-using-r-7449cc10b0ea", "Medium."), 
+                             "All the code for this analysis is available on", tags$a(href="https://github.com/aksinghal86/covid19", "my Github repo."),
                              tags$br(), tags$br()
                          ),
                          plotOutput(outputId = "loglinear_fit_plot"),
@@ -417,8 +446,10 @@ ui <- fluidPage(
                 ),
                 
                 tabPanel("Preliminary Projections", 
+                         tags$br(),
                          tags$div(
-                             "Preface: These projections are made using simple logistic regression, which is pretty common in biological and
+                             tags$em("Preface:"), 
+                             "These projections are made using logistic regression, which is pretty common in biological and
                              economic growth models because logistic regression follows a sigmoidal-shaped curve (s-curve) -- there is
                              slow growth in the beginning followed by an exponential growth phase until the resources run out, which prompts
                              a decline phase until you reach an equilibrium. Though public health interventions would slow the spread of the
@@ -427,7 +458,7 @@ ui <- fluidPage(
                              "However, please note that these are fairly simple projections. These don't take into account any public health
                              interventions or any uncertainty or covariance within the parameters. As such, these estimates are likely to
                              be on the lower end of the spectrum. There are also no uncertainty bounds around these estimates for aforementioned
-                             reason. Nevertheless, the estimates are a really good starting point on which to improve upon.",
+                             reasons. Nevertheless, the estimates are a really good starting point on which to improve upon.",
                              tags$br(), tags$br(),
                              "Logistic regression models follow the equation: ", tags$br(), tags$br(),
                              tags$em("C(t) = p/1 + exp(-a * (t - B))"),
@@ -436,8 +467,11 @@ ui <- fluidPage(
                              "p is the asymptotic value of infections (the peak of the curve),", tags$br(),
                              "a is the growth rate prior to the peak of the infections, and", tags$br(),
                              "B is where rate of change is maximal.", tags$br(), tags$br(),
-                             "I used the nlsLM package from the minpack.LM package. More information of",
-                             tags$a(href="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-logistic_regression/", "here.")
+                             "I used the nlsLM package from the minpack.LM package. I also wrote two related posts on this on my blog",
+                             tags$a(href="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-logistic_regression/", "here"), 
+                             "and", 
+                             tags$a(href="https://aksinghal86.github.io/covid19/posts/covid19-projections-using-GRM/", "here."),
+                             "All the code is also available on ", tags$a(href="https://github.com/aksinghal86/covid19", "my Github repo.")
                          ),
                          tags$br(), 
 
@@ -447,7 +481,14 @@ ui <- fluidPage(
                              While the fit is pretty good, it is unable to unaccount for 'flattening the curve' measures, so it tapers out 
                              faster than it should leading to likely underestimates of actual confirmed cases."
                          ), tags$br(),
-                         plotOutput(outputId = "cum_case_projections"),
+                         plotOutput(outputId = "cum_case_projections"), tags$br(),
+                         
+                         tags$div(
+                             "According to the baseline model, below are the fitted parameters", 
+                             verbatimTextOutput("cum_case_fitted_params"), 
+                             "Remember, p is the total number of estimated cases (the asymptote above), a is the growth rate, and B 
+                             is when the rate of change is maximal starting from the start date."
+                         ), 
                          
                          tags$h4("Daily case projections"),
                          tags$div(
@@ -458,10 +499,14 @@ ui <- fluidPage(
                          tags$h4("Cumulative death projections"), 
                          tags$div(
                              "Now for the total number of projected deaths. Compare these to the ones made by IHME via University of Washington
-                             for some context. Those are obviously vastly more robust than these estimates but these aren't too shabby either, 
+                             for some context. Those are obviously vastly more robust than these estimates but these aren't too shabby either
                              for a baseline model."
                          ), tags$br(),
                          plotOutput(outputId = "cum_death_projections"), 
+                         tags$div(
+                             "And the fitted model parameters:",
+                             verbatimTextOutput("cum_death_fitted_params")
+                         ),
                          
                          tags$h4("Daily death projections"), 
                          tags$div(
@@ -474,18 +519,37 @@ ui <- fluidPage(
                              "To come soon: projections building on this model that take into account various relationships between the fitted
                              parameters p, a and B!"
                          )
-                     )
-                ), 
-            
-            fluidRow(
-                    tags$br(), tags$br(),
-                    tags$h6('~~~Data made available by The New York Times~~~')
+                     ), 
+                tabPanel("About",
+                         tags$br(),
+                         tags$div(
+                             "All the data used in this analysis was made available by The New York Times on their Github repo,
+                             which is updated daily. Much research and inspiration from numerous blogs, websites and conversations 
+                             with friends has gone behind this work.",
+                             tags$br(), tags$br(),
+                             "I have written some related posts on this subject matter, available on ", 
+                             tags$a(href="https://aksinghal86.github.io/covid19", "my blog"), " and on ", 
+                             tags$a(href="https://medium.com/@aksinghal.aks", "Medium."), "All the code is also available on ",
+                             tags$a(href="https://github.com/aksinghal86/covid19", "Github."),
+                             tags$br(), tags$br(), 
+                             
+                             tags$h4("About Ankur Singhal"),
+                             "An entreprenuer by nature, a biologist by education, data scientist by career and a rock climber by passion. 
+                             I have started my own consulting company, Empirical Solutions Consulting, LLC, written several scientific 
+                             manuscripts, worked as a consultant for years and launched a beta version of my climbing web app", 
+                             tags$em(tags$a(href="https://aksinghal86.pythonanywhere.com", "Pebblefinder.")),
+                             tags$br(), tags$br(),
+                             "My newest pet project is data journalism since it appears to be pretty good at combining my voracious
+                             appetite for research and digging up facts, getting better at data science, and 
+                             sharing with what I learn along the way with the world. I hope you will join me! :)"
+                         )
+                )
             )
         )
     )
 )
 
-#### Server ####
+# Server #
 server <- function(input, output) {
     
     # Front end for sequential filtering of counties 
@@ -566,20 +630,32 @@ server <- function(input, output) {
         lambda_plot(incidence_objects(), input$county, input$state)
     })
     
+    model_fits <- reactive({
+        logistic_regression_fits(geo_loc()$data, input$county, input$state)
+    })
+    
     output$cum_case_projections <- renderPlot({
-        simple_logistic_cases_proj_plots(geo_loc()$data, input$county, input$state)$cum_plot
+        model_fits()$cum_cases_plot
+    })
+    
+    output$cum_case_fitted_params <- renderPrint({
+        coef(model_fits()$cases_fit)
     })
 
     output$epi_case_projections <- renderPlot({
-        simple_logistic_cases_proj_plots(geo_loc()$data, input$county, input$state)$epi_plot
+        model_fits()$epi_cases_plot
     })
     
     output$cum_death_projections <- renderPlot({
-        simple_logistic_deaths_proj_plots(geo_loc()$data, input$county, input$state)$cum_plot
+        model_fits()$cum_deaths_plot
+    })
+    
+    output$cum_death_fitted_params <- renderPrint({
+        coef(model_fits()$deaths_fit)
     })
     
     output$epi_death_projections <- renderPlot({
-        simple_logistic_deaths_proj_plots(geo_loc()$data, input$county, input$state)$epi_plot
+        model_fits()$epi_deaths_plot
     })
 }
 
