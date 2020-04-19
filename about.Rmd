@@ -8,4 +8,9 @@ description: |
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-Source code located at: https://github.com/aksinghal86/covid19
+
+An entreprenuer by nature, a biologist by education, data scientist by career and a rock climber by passion. I have started my own consulting company, Empirical Solutions Consulting, LLC, written several scientific manuscripts, worked as a consultant for years and launched a beta version of my climbing web app [Pebblefinder](https://aksinghal86.pythonanywhere.com).
+
+My newest pet project is data journalism since it appears to be pretty good at combining my voracious appetite for research and digging up facts, getting better at data science, and sharing with what I learn along the way with the world -- the inspirating for this blog! I hope you will join me! :)
+
+All the source code is located in a [Github repo](https://github.com/aksinghal86/covid19). There is an associated [Shiny app](https://aksinghal86.shinyapps.io/covid19) as well, developed by yours truly.  
