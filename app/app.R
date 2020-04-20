@@ -50,11 +50,37 @@ all_data <- dplyr::bind_rows(all_us, state_data, county_data) %>%
     filter(cases >= 0)
 
 # AQI data
-# aqi_data <- read.delim('../data/aqi-by-county.csv', sep = ",", header = TRUE) %>%
-#     mutate(date = ymd(date_local)) %>%
-#     filter(pollutant_standard == "PM25 Annual 2012") %>% 
-#     select(state, state_code, county, county_code, date, aqi) 
+aqi_data_by_county <- read.delim('data/air_quality_data.csv', sep = ",", header = TRUE, stringsAsFactors = FALSE) %>%
+    rename(date = Date, siteid = Site.ID, daily_PM2.5 = Daily.Mean.PM2.5.Concentration, daily_aqi = DAILY_AQI_VALUE, 
+           lat = SITE_LATITUDE, lon = SITE_LONGITUDE, cbsa = CBSA_NAME, county = COUNTY, state = STATE) %>%
+    select(date, daily_PM2.5, daily_aqi, cbsa, state, county) %>%
+    mutate(date = mdy(date)) 
 
+
+# Change some county names to align with the covid19 data from NY times. More info 
+# available on their github
+aqi_data_by_county$county[aqi_data_by_county$county %in% c('New York', 'Kings', 'Queens', 'Bronx', 'Richmond')] = "New York City"
+
+# some counties have more than one site so take an average
+aqi_data_by_county <- aqi_data_by_county %>% 
+    group_by(state, county, date) %>%
+    summarize(daily_PM2.5 = mean(daily_PM2.5), daily_aqi = mean(daily_aqi))
+
+# Group date by state and date and summarize 
+aqi_data_by_state <- aqi_data_by_county %>% 
+    group_by(state, date) %>% 
+    summarize(daily_PM2.5 = mean(daily_PM2.5), daily_aqi = mean(daily_aqi)) %>%
+    mutate(county = "All counties", cbsa = "All cbsa")
+
+# Group data by country 
+aqi_data_us <- aqi_data_by_state %>%
+    group_by(date) %>% 
+    summarize(daily_PM2.5 = mean(daily_PM2.5), daily_aqi = mean(daily_aqi)) %>%
+    mutate(county = "All counties", cbsa = "All cbsa", state = "All states")
+
+# Combine aqi data
+aqi_data <- dplyr::bind_rows(aqi_data_us, aqi_data_by_state, aqi_data_by_county) %>%
+    left_join(interventions, by = "state")
 
 #### Parameters and functions for projections ####
 
@@ -215,7 +241,7 @@ re_plot <- function(dat, county, state) {
         geom_vline(xintercept = unique(dat$ed_facilities), lty = 'dashed', color = 'darkgreen', size = 1) +
         geom_vline(xintercept = unique(dat$non_essential), lty = 'dashed', color = 'darkblue', size = 1) +
         geom_vline(xintercept = unique(dat$stay_at_home), lty = 'dashed', color = 'darkorange', size = 1) +
-        labs(x = "", title = paste("Estimated R for", county, ",", state),
+        labs(x = "", y = "Mean Daily AQI", title = paste("AQI in", county, ",", state),
              subtitle = "(green dashed line = Educational services closed,\nblue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
         my_theme +
         theme(legend.position = 'none')
@@ -309,7 +335,23 @@ simple_logistic_deaths_proj_plots <- function(dat, county, state) {
     return(list('cum_plot' = cum_plot, 'epi_plot' = epi_plot))
 }
 
-
+aqi_plot <- function(dat, county, state) {
+    regions <- data.frame(ystart = c(0, 50), yend = c(50, 100), col = c("Good", "Moderate"))
+    ggplot() +
+        geom_rect(data = regions, 
+                  aes(xmin = min(dat$date, na.rm = TRUE), xmax = max(dat$date, na.rm = TRUE), 
+                      ymin = ystart, ymax = yend, fill = col), 
+                  alpha = 0.4) + 
+        scale_fill_manual(values = c("green", "yellow")) + 
+        geom_line(data = dat, aes(x = date, y = daily_aqi), size = 1, color = "darkcyan") +
+        geom_vline(xintercept = unique(dat$ed_facilities), lty = 'dashed', color = 'darkgreen', size = 1) +
+        geom_vline(xintercept = unique(dat$non_essential), lty = 'dashed', color = 'darkblue', size = 1) +
+        geom_vline(xintercept = unique(dat$stay_at_home), lty = 'dashed', color = 'darkorange', size = 1) +
+        labs(x = "", title = paste("Estimated R for", county, ",", state),
+             subtitle = "(green dashed line = Educational services closed,\nblue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
+        my_theme +
+        theme(legend.position = 'none')
+}
 
 #### Define UI ####
 ui <- fluidPage(
@@ -520,6 +562,34 @@ ui <- fluidPage(
                              parameters p, a and B!"
                          )
                      ), 
+                tabPanel("AQI",
+                tags$br(),
+                tags$div(
+                    "Since most states have been in lockdown and people movement has been severely restricted, I was curious
+                    to see if there has been an improvement in air quality across the US. In some areas, like highly dense
+                    regions, e.g., Los Angeles, SF bay area, New York, there has definitely been an improvement. In others,
+                    it's not so clear. Nevertheless, it's pretty fascinating.",
+                    tags$br(), tags$br(),
+                    "Remember to change the state/county on the left for the ones you are interested in. There are no data
+                    available for some counties though in which case it'll just show an empty space.",
+                    tags$br(), tags$br(),
+                    plotOutput(outputId = "aqi_plot"),
+                    fluidRow(
+                        column(12, align = "center", 
+                               sliderInput("aqi_date", "Select the time frame:",
+                                           min = ymd("2020-01-01"), max = today(), value = ymd("2020-01-01"))
+                        )
+                    ),
+                    tags$br(), 
+                    "If there are multiple sites in a county or state, those values are averaged, so that's what you are seeing 
+                    above. Data are from", tags$a(href="https://www.epa.gov/outdoor-air-quality-data/download-daily-data", "U.S. EPA"),
+                    "and a royal pain in the butt to fetch. I actually literally had to fetch the data for every single state
+                    manually because their API sucks. Point being that these plots unfortunately won't be updated daily. The last
+                    time I fetched the data was April 19, 2020; it'll probably be at least a week before this is updated to reflect
+                    new data."
+                    )
+                ),
+
                 tabPanel("About",
                          tags$br(),
                          tags$div(
@@ -575,10 +645,20 @@ server <- function(input, output) {
     # Subset data based on state and county input by user 
     geo_loc <- reactive({
         # Filter out data
-        dat <- all_data %>% filter(state %in% input$state, county %in% input$county)
-        peak_date <- create_incidence_objects(dat, peak_date = today()+1)$i.peak
+        df <- all_data %>% filter(state %in% input$state, county %in% input$county)
         
-        return(list('data' = dat, 'peak_date' = peak_date))
+        # Error handler: an empty dataframe is passed the first time page is loaded
+        # so when trying to find peak date it returns an error
+        if(nrow(df) == 0) {
+            peak_date <- today() + 1
+        } else {
+            peak_date <- create_incidence_objects(df, peak_date = today()+1)$i.peak
+        }
+        return(list('data' = df, 'peak_date' = peak_date))
+    })
+
+    sub_aqi_data <- reactive({
+        aqi_data %>% filter(state %in% input$state, county %in% input$county, date >= ymd(input$aqi_date))
     })
     
     output$cum_log_plot <- renderPlot({
@@ -607,6 +687,7 @@ server <- function(input, output) {
         } else {
             peak_date <- input$peak_date
         }
+        
         create_incidence_objects(geo_loc_by_date(), peak_date)
     })
     
@@ -657,8 +738,11 @@ server <- function(input, output) {
     output$epi_death_projections <- renderPlot({
         model_fits()$epi_deaths_plot
     })
+    
+    output$aqi_plot <- renderPlot({
+        if(nrow(sub_aqi_data()) > 0) aqi_plot(sub_aqi_data(), input$county, input$state)
+    })
 }
 
 #### Run the application ####
 shinyApp(ui = ui, server = server)
-#options(shiny.sanitize.errors = TRUE)

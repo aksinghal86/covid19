@@ -7,12 +7,32 @@ rmd_output_metadata:
     "covid19_us_data.csv"
 ---
 
+# 
 ```{r}
 library(tidyr)
 library(dplyr)
 ```
 
+# Air quality data creater
+```{r}
+dir <- "/Users/aksin/Projects/covid19/data/raw_air_quality_files/"
+files <- list.files(dir)
 
+df <- data.frame()
+
+for (i in 1:length(files)) {
+  tdf <- read.csv(paste0(dir, files[i]), sep=",", header=TRUE, stringsAsFactors = FALSE)
+  df <- df %>% rbind(tdf)
+}
+
+dir <- "/Users/aksin/Projects/covid19/app/data/"
+write.csv(df, paste0(dir, 'air_quality_data.csv'), row.names = FALSE)
+```
+
+
+
+
+# us data creater but not being used
 ```{r}
 # Public health interventions
 interventions <- read.delim('data/interventions.csv', sep = ",", header = TRUE, stringsAsFactors = FALSE) %>% 
@@ -52,6 +72,7 @@ all_data <- dplyr::bind_rows(all_us, state_data, county_data) %>%
 
 
 ```{r}
-write.csv(all_data, 'data/covid19_us_data.csv', row.names=FALSE)
+write.csv(all_data, '/Users/aksin/Projects/covid19/data/covid19_us_data.csv', row.names=FALSE)
 ```
+
 
