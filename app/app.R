@@ -60,6 +60,7 @@ aqi_data_by_county <- read.delim('data/air_quality_data.csv', sep = ",", header 
 # Change some county names to align with the covid19 data from NY times. More info 
 # available on their github
 aqi_data_by_county$county[aqi_data_by_county$county %in% c('New York', 'Kings', 'Queens', 'Bronx', 'Richmond')] = "New York City"
+aqi_data_by_county$state[aqi_data_by_county$state == "District Of Columbia"] = "District of Columbia"
 
 # some counties have more than one site so take an average
 aqi_data_by_county <- aqi_data_by_county %>% 
@@ -118,7 +119,7 @@ tfwd = 60 # number of days in the future to forecast for
 
 # Logistic regression model using nlsLm from minpack.lm package
 simple_logistic_regression <- function(t, y) {
-    fit <- nlsLM(y ~ p/(1 + exp(-a * (t-B))), start = list(p=10, a=0.2, B=1), lower = c(min(y), 0, 0))
+    fit <- nlsLM(y ~ p/(1 + exp(-a * (t-B))), start = list(p=1000, a=0.18, B=20), lower = c(min(y), 0, 0))
     return(fit)
 }
 
@@ -162,7 +163,7 @@ my_theme <- theme_minimal() +
 
 # Axis utility function
 ks <- function(x) {
-    number_format(accuracy = 1, scale = 1/1000, suffix = 'k', big.mark = ",") (x)
+    number_format(accuracy = .1, scale = 1/1000, suffix = 'k', big.mark = ",") (x)
 }
 ### Plots
 # Create log cumulative plot
@@ -241,7 +242,7 @@ re_plot <- function(dat, county, state) {
         geom_vline(xintercept = unique(dat$ed_facilities), lty = 'dashed', color = 'darkgreen', size = 1) +
         geom_vline(xintercept = unique(dat$non_essential), lty = 'dashed', color = 'darkblue', size = 1) +
         geom_vline(xintercept = unique(dat$stay_at_home), lty = 'dashed', color = 'darkorange', size = 1) +
-        labs(x = "", y = "Mean Daily AQI", title = paste("AQI in", county, ",", state),
+        labs(x = "", y = "R", title = paste0("Estimated instantaneous R for ", county, ", ", state),
              subtitle = "(green dashed line = Educational services closed,\nblue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
         my_theme +
         theme(legend.position = 'none')
@@ -282,8 +283,7 @@ logistic_regression_fits <- function(dat, county, state) {
         labs(x = "", y = 'Daily incidence',
              title = paste('Daily cases fitted vs observed in', county, ",", state),
              subtitle = '(solid line = fitted incidence, circle = observed incidence)') +
-        my_theme +
-        scale_y_continuous(labels = ks)
+        my_theme 
     
     # Cumulative plot for deaths with projections
     cum_deaths_plot <- ggplot(deaths_preds$preds, aes(x=date)) +
@@ -293,8 +293,7 @@ logistic_regression_fits <- function(dat, county, state) {
         labs(x = "", y = 'Cumulative Incidence',
              title = paste('Cumulative deaths fitted vs observed in', county, ",", state),
              subtitle = '(solid line = fitted incidence, circle = observed incidence)') +
-        my_theme +
-        scale_y_continuous(labels = ks)
+        my_theme 
     
     # Epi plot for deaths with projections
     epi_deaths_plot <- ggplot(deaths_preds$preds, aes(x=date)) +
@@ -304,8 +303,7 @@ logistic_regression_fits <- function(dat, county, state) {
         labs(x = "", y = 'Daily incidence',
              title = paste('Daily deaths vs observed in', county, ",", state),
              subtitle = '(solid line = fitted incidence, circle = observed incidence)') +
-        my_theme +
-        scale_y_continuous(labels = ks)
+        my_theme
     
     return(list('cases_fit' = cases_preds$mod_fit, 'deaths_fit' = deaths_preds$mod_fit,
                 'cum_cases_plot' = cum_cases_plot, 'epi_cases_plot' = epi_cases_plot,
@@ -347,7 +345,7 @@ aqi_plot <- function(dat, county, state) {
         geom_vline(xintercept = unique(dat$ed_facilities), lty = 'dashed', color = 'darkgreen', size = 1) +
         geom_vline(xintercept = unique(dat$non_essential), lty = 'dashed', color = 'darkblue', size = 1) +
         geom_vline(xintercept = unique(dat$stay_at_home), lty = 'dashed', color = 'darkorange', size = 1) +
-        labs(x = "", title = paste("Estimated R for", county, ",", state),
+        labs(x = "", y = "Mean AQI", title = paste0("Mean Daily AQI in ", county, ", ", state),
              subtitle = "(green dashed line = Educational services closed,\nblue dashed line = Non-essential services closed, \norange dashed line = Stay at home order)") +
         my_theme +
         theme(legend.position = 'none')
