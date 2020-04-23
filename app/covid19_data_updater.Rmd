@@ -8,28 +8,95 @@ rmd_output_metadata:
 ---
 
 # 
-```{r}
+```{r, nessage=FALSE, warning=FALSE}
 library(tidyr)
 library(dplyr)
+library(lubridate)
 ```
 
 # Air quality data creater
+
+
 ```{r}
-dir <- "/Users/aksin/Projects/covid19/data/raw_air_quality_files/"
+dir <- "/Users/aksin/Projects/covid19/data/raw_air_quality_files/2020/pm2.5/"
 files <- list.files(dir)
 
-df <- data.frame()
+aqi_2020 <- data.frame()
 
 for (i in 1:length(files)) {
-  tdf <- read.csv(paste0(dir, files[i]), sep=",", header=TRUE, stringsAsFactors = FALSE)
-  df <- df %>% rbind(tdf)
+  tmp <- read.csv(paste0(dir, files[i]), sep=",", header=TRUE, stringsAsFactors = FALSE)
+  aqi_2020 <- aqi_2020 %>% rbind(tmp)
 }
 
-dir <- "/Users/aksin/Projects/covid19/app/data/"
-write.csv(df, paste0(dir, 'air_quality_data.csv'), row.names = FALSE)
+aqi_2020 <- aqi_2020 %>% 
+  mutate(Date = mdy(Date), year = 2020, month = month(Date), week = week(Date), day = Date-ymd('2020-01-01'))
+
+head(aqi_2020)
 ```
 
 
+```{r}
+dir <- "/Users/aksin/Projects/covid19/data/raw_air_quality_files/2019/pm2.5/"
+files <- list.files(dir)
+
+aqi_2019 <- data.frame()
+
+for (i in 1:length(files)) {
+  tmp <- read.csv(paste0(dir, files[i]), sep=",", header=TRUE, stringsAsFactors = FALSE)
+  aqi_2019 <- aqi_2019 %>% rbind(tmp)
+}
+
+aqi_2019 <- aqi_2019 %>% 
+  mutate(Date = mdy(Date), year = 2019, month = month(Date), week = week(Date), day = Date-ymd("2019-01-01")) %>% 
+  filter(day <= max(aqi_2020$day))
+  
+head(aqi_2019)
+```
+
+
+```{r}
+aqi <- bind_rows(aqi_2019, aqi_2020) %>%
+   rename(date = Date, siteid = Site.ID, daily_PM2.5 = Daily.Mean.PM2.5.Concentration, daily_aqi = DAILY_AQI_VALUE, 
+           lat = SITE_LATITUDE, lon = SITE_LONGITUDE, cbsa = CBSA_NAME, county = COUNTY, state = STATE) %>%
+    select(date, daily_PM2.5, daily_aqi, cbsa, state, county, year, month, week, day)
+
+nrow(aqi)
+
+# Change some county names to align with the covid19 data from NY times. More info 
+# available on their github
+aqi$county[aqi$state == "New York" & aqi$county %in% c('New York', 'Kings', 'Queens', 'Bronx', 'Richmond')] = "New York City"
+aqi$state[aqi$state == "District Of Columbia"] = "District of Columbia"
+
+# some counties have more than one site so take an average
+aqi_data_by_county <- aqi %>% 
+    group_by(state, county, date, year, month, week, day) %>%
+    summarize(daily_PM2.5 = mean(daily_PM2.5), daily_aqi = mean(daily_aqi))
+
+# Group date by state and date and summarize
+aqi_data_by_state <- aqi_data_by_county %>%
+    group_by(state, date, year, month, week, day) %>%
+    summarize(daily_PM2.5 = mean(daily_PM2.5), daily_aqi = mean(daily_aqi)) %>%
+    mutate(county = "All counties", cbsa = "All cbsa")
+
+# Group data by country
+aqi_data_us <- aqi_data_by_state %>%
+    group_by(date, year, month, week, day) %>%
+    summarize(daily_PM2.5 = mean(daily_PM2.5), daily_aqi = mean(daily_aqi)) %>%
+    mutate(county = "All counties", cbsa = "All cbsa", state = "All states")
+
+aqi <- dplyr::bind_rows(aqi_data_us, aqi_data_by_state, aqi_data_by_county)
+
+nrow(aqi)
+```
+```{r}
+head(aqi)
+```
+
+
+```{r}
+dir <- "/Users/aksin/Projects/covid19/app/data/"
+write.csv(aqi, paste0(dir, 'air_quality_data.csv'), row.names = FALSE)
+```
 
 
 # us data creater but not being used
